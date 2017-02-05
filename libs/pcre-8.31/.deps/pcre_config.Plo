@@ -1,0 +1,142 @@
+pcre_config.lo: pcre_config.c config.h pcre_internal.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/ctype.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/features.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/uClibc_config.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/sys/cdefs.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/types.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/wordsize.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/typesizes.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/uClibc_touplow.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include-fixed/limits.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include-fixed/syslimits.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/limits.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/posix1_lim.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/local_lim.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/linux/limits.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/uClibc_local_lim.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/posix2_lim.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include/stddef.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/stdio.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/uClibc_stdio.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/wchar.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/wchar.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/pthreadtypes.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include/stdarg.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/stdio_lim.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/stdlib.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/waitflags.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/waitstatus.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/endian.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/endian.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/byteswap.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/byteswap.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/byteswap-common.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/byteswap-16.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/sys/types.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/time.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/sys/select.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/select.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/sigset.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/time.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/sys/sysmacros.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/alloca.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/string.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include/stdint.h \
+ /home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/stdint.h \
+ pcre.h ucp.h
+
+config.h:
+
+pcre_internal.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/ctype.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/features.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/uClibc_config.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/sys/cdefs.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/types.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/wordsize.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/typesizes.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/uClibc_touplow.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include-fixed/limits.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include-fixed/syslimits.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/limits.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/posix1_lim.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/local_lim.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/linux/limits.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/uClibc_local_lim.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/posix2_lim.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include/stddef.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/stdio.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/uClibc_stdio.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/wchar.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/wchar.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/pthreadtypes.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include/stdarg.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/stdio_lim.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/stdlib.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/waitflags.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/waitstatus.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/endian.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/endian.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/byteswap.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/byteswap.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/byteswap-common.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/byteswap-16.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/sys/types.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/time.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/sys/select.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/select.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/sigset.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/bits/time.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/sys/sysmacros.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/alloca.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/string.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/lib/gcc/x86_64-rorschack-linux-uclibc/6.2.0/include/stdint.h:
+
+/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include/stdint.h:
+
+pcre.h:
+
+ucp.h:
