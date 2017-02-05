@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #FLASHABLE ZIP CREATOR
 CURRDIR=$PWD
 cd "`dirname $0`/../bbx"
