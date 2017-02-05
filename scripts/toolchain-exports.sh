@@ -1,5 +1,5 @@
 ##SET TOOLCHAIN NAMES
-TOOLCHAINDIR="$(realpath `dirname $0`/toolchains)"
+TOOLCHAINDIR="$PWD/toolchains"
 ARM=$TOOLCHAINDIR/armhf-uClibc
 #ARM=$TOOLCHAINDIR/arm-uClibc
 ARM64=$TOOLCHAINDIR/aarch64-glibc
