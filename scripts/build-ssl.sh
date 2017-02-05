@@ -15,7 +15,7 @@ do
 	C_EXTRA_FLAGS="-DWOLFSSL_STATIC_RSA" || exit $?
 
 	modpath make clean
-	modpath make
+	modpath make -j$CORES
 
 	cd ssl_helper-wolfssl
 
