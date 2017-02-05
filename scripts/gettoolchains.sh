@@ -8,6 +8,6 @@ cd toolchains
 md5sum -c toolchains.md5 || exit 1
 for i in *.tar.xz
 do
-	tar Jxvf $i || exit 1
+	tar Jxf $i || exit 1
 done
 cd $CURRDIR
