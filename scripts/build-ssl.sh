@@ -18,9 +18,9 @@ do
 
 	cd ssl_helper-wolfssl
 
-	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib $_host'-gcc' -Os -Wall -I.. -c ssl_helper.c -o ssl_helper.o
-	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib $_host'-gcc' -static -Wl,--start-group ssl_helper.o -lm ../src/.libs/libwolfssl.a -Wl,--end-group -o ssl_helper
-	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib $_host'-strip' ssl_helper
+	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib $_host'-gcc' -Os -Wall -I.. -c ssl_helper.c -o ssl_helper.o > /dev/null
+	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib $_host'-gcc' -static -Wl,--start-group ssl_helper.o -lm ../src/.libs/libwolfssl.a -Wl,--end-group -o ssl_helper > /dev/null
+	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib $_host'-strip' ssl_helper > /dev/null
 	[[ $_host =~ 86 ]] && _host=x86
 	[[ $_host == mips ]] && _host=mipseb
 	case $_host in
