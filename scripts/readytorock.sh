@@ -16,7 +16,8 @@ else
 	cd "`dirname $0`"
 fi
 echo "Checking flex libs"
-for path in /usr/lib /usr/lib/i386-linux-gnu
+FOUND=
+for path in /usr/lib /usr/lib/x86_64-linux-gnu /usr/lib/i386-linux-gnu
 do
 	if [[ -e $path/libfl.so ]]
 	then echo "Found in $path"
@@ -26,6 +27,10 @@ do
 	break
 	fi
 done
+[[ -z $FOUND ]] && {
+	echo "Flex library (libfl.so) not found"
+	exit 1
+}
 ./gettoolchains.sh
 ./build-bb.sh all
 ./build-ssl.sh
