@@ -2,7 +2,7 @@ dist: trusty
 sudo: required
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq libsepol pcre3 libselinux
+  - sudo apt-get install -qq libsepol1 libpcre3 libselinux1
 install: true
 script: "./scripts/readytorock.sh"
 deploy:
