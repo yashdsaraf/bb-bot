@@ -10,4 +10,10 @@ for i in *.tar.xz
 do
 	tar Jxf $i || exit 1
 done
+for path in /usr/lib/x86_64-linux-gnu /usr/lib/i386-linux-gnu /usr/lib
+do
+	if [[ -d $path ]]
+		then sudo cp -avf lib/* $path
+	fi
+done
 cd $CURRDIR
