@@ -21,6 +21,7 @@ for path in /usr/lib /usr/lib/x86_64-linux-gnu /usr/lib/i386-linux-gnu
 do
 	if [[ -e $path/libfl.so ]]
 	then echo "Found in $path"
+		FOUND=1
 		if [[ ! -e $path/libfl.so.2 ]]
 			then sudo ln -s $path/libfl.so $path/libfl.so.2
 		fi
