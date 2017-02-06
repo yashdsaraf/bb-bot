@@ -15,6 +15,17 @@ else
 	git pull
 	cd "`dirname $0`"
 fi
+echo "Checking flex libs"
+for path in /usr/lib /usr/lib/i386-linux-gnu
+do
+	if [[ -e $path/libfl.so ]]
+	then echo "Found in $path"
+		if [[ ! -e $path/libfl.so.2 ]]
+			then sudo ln -s $path/libfl.so $path/libfl.so.2
+		fi
+	break
+	fi
+done
 ./gettoolchains.sh
 ./build-bb.sh all
 ./build-ssl.sh
