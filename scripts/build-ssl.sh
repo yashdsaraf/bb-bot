@@ -10,11 +10,11 @@ do
 	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib CC=$_host'-cc' CFLAGS="-Os -static -fomit-frame-pointer -falign-functions=1 \
 	-falign-labels=1 -falign-loops=1 -falign-jumps=1 -ffunction-sections -fdata-sections" \
 	./configure --host=$_host --enable-static --enable-singlethreaded --enable-openssh --disable-shared  \
-	C_EXTRA_FLAGS="-DWOLFSSL_STATIC_RSA" || exit $?
+	C_EXTRA_FLAGS="-DWOLFSSL_STATIC_RSA" > /dev/null || exit $?
 
 	echo "Building $(cut -d- -f1 <<< $_host) ssl_helper--"
 	make clean
-	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib make -j$CORES
+	PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib make -j$CORES &>/dev/null
 
 	cd ssl_helper-wolfssl
 
@@ -34,7 +34,7 @@ do
 		_host=mips
 		;;
 	esac
-mv ssl_helper ../../out/ssl_helper-"$(cut -d- -f1 <<<$_host)"
+mv -v ssl_helper ../../out/ssl_helper-"$(cut -d- -f1 <<<$_host)" || exit 1
 cd ..
 done
 
