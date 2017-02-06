@@ -21,8 +21,8 @@ mkdir -p ../out
 wget http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
 tar xf automake*
 cd automake-1.15
-sh configure --prefix /usr/local
-make install
+sh configure --prefix /usr/local > /dev/null
+sudo make install
 ./build-ssl.sh
 ./build-bb.sh all
 ./update-bins.sh
