@@ -2,7 +2,7 @@ dist: trusty
 sudo: required
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq flex
+  - sudo apt-get install -qq flex libfl-dev bison
 install: true
 script: "./scripts/readytorock.sh"
 deploy:

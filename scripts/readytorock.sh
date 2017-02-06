@@ -3,7 +3,7 @@ set -e
 VER="1.26.2-YDS"
 STATUS="Stable"
 DATE="`date +'%d %b/%y'`"
-CORES="`lscpu | grep '^CPU(s)' | cut -d : -f2 | xargs -I{} expr {} + 1`"
+CORES="`lscpu | grep '^CPU(s)' | cut -d : -f2 | tr -d ' '`"
 echo "Cores: $CORES"
 export VER STATUS DATE CORES
 CURRDIR=$PWD
