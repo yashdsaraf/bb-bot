@@ -1,5 +1,8 @@
 dist: trusty
-sudo: false
+sudo: required
+before_install:
+  - sudo apt-get -qq udpate
+  - sudo apt-get install -y flex
 install: true
 script: "./scripts/readytorock.sh"
 deploy:

@@ -3,7 +3,9 @@ set -e
 VER="1.26.2-YDS"
 STATUS="Stable"
 DATE="`date +'%d %b/%y'`"
-export VER STATUS DATE
+CORES="`lscpu | grep '^CPU(s)' | cut -d : -f2 | xargs -I{} expr {} + 1`"
+echo "Cores: $CORES"
+export VER STATUS DATE CORES
 CURRDIR=$PWD
 cd "`dirname $0`"
 if [[ ! -d ../busybox ]]
