@@ -22,18 +22,17 @@ build() {
         cross=`ls $toolc/bin | grep -E ".+-rorschack-linux-.+gcc$"\
         | awk -Fgcc '{print $1}'`
         sed -i "s|.*CONFIG_SYSROOT.*|CONFIG_SYSROOT=\"$sysr\"|" .config
-        echo "Building $i busybox--"
+        echo "Building $1 busybox--"
         make clean >/dev/null
         PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib ARCH=$1 CROSS_COMPILE=$cross\
-        CFLAGS="-Os -I$toolc/include" make -j$CORES >/dev/null
-        exitstatus=$?
-        [ $exitstatus -ne 0 ] && exit $exitstatus
+        CFLAGS="-Os -I$toolc/include" make -j$CORES >/dev/null 2>&1 || exit $?
         mv -v busybox ../out/busybox-$1-$current
         unset toolc
         shift 1
     done
 }
 
+mkdir -p ../out
 make mrproper
 cp conf_no_selinux .config
 build $*

@@ -8,6 +8,7 @@ cd toolchains
 md5sum -c toolchains.md5 || exit 1
 for i in *.tar.xz
 do
+	echo "Extracting $i--"
 	tar Jxf $i || exit 1
 done
 for path in /usr/lib/x86_64-linux-gnu /usr/lib/i386-linux-gnu /usr/lib
