@@ -16,6 +16,7 @@ else
 	cd "`dirname $0`"
 fi
 ./gettoolchains.sh
+mkdir -p ../out
 ./build-ssl.sh
 ./build-bb.sh all
 ./update-bins.sh

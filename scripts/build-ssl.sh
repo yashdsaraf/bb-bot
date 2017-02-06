@@ -2,7 +2,7 @@
 . ./toolchain-exports.sh
 
 CURRDIR=$PWD
-
+cd "`dirname $0`/../wolfssl"
 for toolc in $ARMMUSL $X86MUSL $MIPSMUSL $MIPSEB
 do
 	_host=$(find $toolc/bin -name "*rorschack*gcc" | sed 's/.*\///;s/-gcc//')
@@ -24,13 +24,16 @@ do
 	[[ $_host =~ 86 ]] && _host=x86
 	[[ $_host == mips ]] && _host=mipseb
 	case $_host in
-		*86) _host=x86
-;;
-mips) _host=mipseb
-;;
-mipsel) _host=mips
-;;
-esac
+	*86)
+		_host=x86
+		;;
+	mips)
+		_host=mipseb
+		;;
+	mipsel)
+		_host=mips
+		;;
+	esac
 mv ssl_helper ../../out/ssl_helper-"$(cut -d- -f1 <<<$_host)"
 cd ..
 done
