@@ -16,8 +16,8 @@ else
 	cd "`dirname $0`"
 fi
 ./gettoolchains.sh
-./build-bb.sh all
 ./build-ssl.sh
+./build-bb.sh all
 ./update-bins.sh
 ./createtgz.sh
 ./mkzip.sh
