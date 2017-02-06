@@ -33,8 +33,10 @@ build() {
 }
 
 make mrproper
+echo -e "\nBuilding Non-SELinux busybox--\n\n"
 cp conf_no_selinux .config
 build $*
+echo -e "\nBuilding SELinux busybox--\n\n"
 current=sel
 cp conf_selinux .config
 build $*
