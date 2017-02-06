@@ -2,18 +2,18 @@
 #FLASHABLE ZIP CREATOR
 CURRDIR=$PWD
 cd "`dirname $0`/../bbx"
-SIGNAPKDIR=$(realpath ../../SignApk)
+# SIGNAPKDIR=$(realpath ../../SignApk)
 ZIPALIGN=~/opt/android-sdk-linux/build-tools/25.0.2/zipalign
-PEM=$SIGNAPKDIR/certificate.pem
-PK8=$SIGNAPKDIR/testkey.pk8
+# PEM=$SIGNAPKDIR/certificate.pem
+# PK8=$SIGNAPKDIR/testkey.pk8
 
 mkzip() {
     ZIPNAME=$(realpath ../out)/Busybox-"$VER"-"$(tr 'a-z' 'A-Z' <<<$1)".zip
     7za a -tzip -r $ZIPNAME *
-    $ZIPALIGN -f -v 4 $ZIPNAME $ZIPNAME.aligned
-    mv -fv $ZIPNAME.aligned $ZIPNAME
-    java -Xms5g -Xmx5g -jar $SIGNAPKDIR/inc.signapk.jar -w $PEM $PK8 $ZIPNAME $ZIPNAME.signed
-    mv -fv $ZIPNAME.signed $ZIPNAME
+    # $ZIPALIGN -f -v 4 $ZIPNAME $ZIPNAME.aligned
+    # mv -fv $ZIPNAME.aligned $ZIPNAME
+    # java -Xms5g -Xmx5g -jar $SIGNAPKDIR/inc.signapk.jar -w $PEM $PK8 $ZIPNAME $ZIPNAME.signed
+    # mv -fv $ZIPNAME.signed $ZIPNAME
 }
 
 mkdir -p workspace out

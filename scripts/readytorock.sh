@@ -17,12 +17,13 @@ else
 fi
 ./gettoolchains.sh
 mkdir -p ../out
+mkdir -p ../bbx/Bins/mipseb
 # install aclocal-1.15
 wget http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
 tar xf automake*
 cd automake-1.15
-sh configure --prefix /usr/local > /dev/null
-sudo make install
+( sh configure --prefix /usr/local
+sudo make install ) &>/dev/null
 cd ..
 ./build-ssl.sh
 ./build-bb.sh all

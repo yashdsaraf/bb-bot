@@ -23,9 +23,9 @@ build() {
         | awk -Fgcc '{print $1}'`
         sed -i "s|.*CONFIG_SYSROOT.*|CONFIG_SYSROOT=\"$sysr\"|" .config
         echo "Building $1 busybox--"
-        make clean >/dev/null
+        make clean &>/dev/null
         PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib ARCH=$1 CROSS_COMPILE=$cross\
-        CFLAGS="-Os -I$toolc/include" make -j$CORES PKG_CONFIG_PATH=$sysr/lib/pkgconfig >/dev/null 2>&1 || exit $?
+        CFLAGS="-Os -I$toolc/include" make -j$CORES >/dev/null 2>&1 || exit $?
         mv -v busybox ../out/busybox-$1-$current
         unset toolc
         shift 1
