@@ -205,14 +205,15 @@ if [ ! -z "$SUIMG" ] || [ ! -z "$MAGISK" ]
 		fi
 	fi
 fi
-if [ $INSTALLDIR == "none" ]
-	then INSTALLDIR="/system/xbin"
-fi
 
-if [ ! -d $INSTALLDIR ]
+if [ ! -d $INSTALLDIR ] || [ $INSTALLDIR == "none" ]
 	then
-	mkdir $INSTALLDIR
-	error "Installation directory $INSTALLDIR is not accessible"
+	INSTALLDIR=/system/xbin
+	if [ ! -d $INSTALLDIR ]
+	then mkdir $INSTALLDIR
+		error "Installation directory $INSTALLDIR is not accessible"
+		chmod 0777 $INSTALLDIR
+	fi
 fi
 
 ui_print "Cleaning up older busybox versions (if any) --"
