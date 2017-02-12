@@ -38,7 +38,7 @@ if [[ $TO_BUILD == "boxemup" ]]
 	cd ..
 	mv ../*zip .
 else
-	+	(cd .. && git clone https://github.com/yashdsaraf/busybox.git)
+	(cd .. && git clone https://github.com/yashdsaraf/busybox.git)
 	./build-ssl.sh
 	./build-bb.sh
 	cd ../out
