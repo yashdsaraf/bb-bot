@@ -27,7 +27,7 @@ if [[ "$TRAVIS_BRANCH" == "$BRANCH" ]]
 			git config --global user.email "travis@travis-ci.org"
 			git config --global user.name "Travis"
 			# Add tag and push to master.
-			git tag -a v${VER}-${TRAVIS_BUILD_NUMBER} -m "Travis build $TRAVIS_BUILD_NUMBER pushed a tag."
+			git tag -a "v${VER}-${TRAVIS_BUILD_NUMBER}" -m "Travis build $TRAVIS_BUILD_NUMBER pushed a tag."
 			git push origin --tags
 			git fetch origin
 			echo -e "Done tagging this build.\n"
