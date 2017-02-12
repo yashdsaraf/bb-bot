@@ -15,24 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
-CURRDIR=$PWD
-cd "`dirname $0`/../bbx/Bins/x86"
-
-xzdec busybox.xz > busybox
-chmod +x busybox
-NORMAL="$(./busybox --list)"
-xzdec busybox-sel.xz > busybox
-chmod +x busybox
-SEL="$(./busybox --list)"
-rm busybox
-SEL=$(sort <(echo -e "$NORMAL\n$SEL") | uniq -u)
-NORMAL="$(tr '\n' ' ' <<<$NORMAL | sed 's/ /, /g')"
-SEL="$(tr '\n' ' ' <<<$SEL | sed 's/ /, /g')"
-echo "Normal build --"
-echo "===================================================================="
-echo ${NORMAL:: -2}
-echo ""
-echo "SELinux build (excluding the above applets) --"
-echo "===================================================================="
-echo ${SEL:: -2}
-cd $CURRDIR
+if [[ $TO_BUILD == "boxemup" ]]
+	then
+	sudo apt-get update -qq
+	sudo apt-get install -qq p7zip-full realpath
+else
+	sudo add-apt-repository ppa:jonathonf/automake -y
+	sudo apt-get update -qq
+	sudo apt-get install -qq automake-1.15
+fi

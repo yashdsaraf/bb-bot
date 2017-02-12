@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2016 Yash D. Saraf
+# Copyright 2017 Yash D. Saraf
 # This file is part of BB-Bot.
 
 # BB-Bot is free software: you can redistribute it and/or modify
@@ -15,7 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
-. ./toolchain-exports.sh
 ##Build busybox auto-magically
 CURRDIR=$PWD
 cd "`dirname $0`/../busybox"
@@ -24,15 +23,17 @@ current=nosel
 build() {
     if [[ $1 == "all" ]]
         then
-        if [[ $current == "nosel" ]]
-            then build arm arm64 x86 x86_64 mips mips64 mipseb
-        else build arm arm64 x86 x86_64 mips mips64
-        fi
+        build arm arm64 x86 x86_64 mips mips64 mipseb
         return 0
     fi
 
     while (( $# ))
     do
+        if [[ $1 == "mipseb" && $current == "sel" ]]
+            then
+            shift 1
+            continue
+        fi
         : ${toolc:=$(eval echo \$`tr 'a-z' 'A-Z' <<< $1`)}
         sysr=$(find $toolc -name sysroot -type d)
         cross=`ls $toolc/bin | grep -E ".+-rorschack-linux-.+gcc$"\
@@ -51,8 +52,8 @@ build() {
 make mrproper
 echo -e "\nBuilding Non-SELinux busybox--\n"
 cp conf_no_selinux .config
-build $*
+build $TO_BUILD
 echo -e "\nBuilding SELinux busybox--\n"
 current=sel
 cp conf_selinux .config
-build $*
+build $TO_BUILD

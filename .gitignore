@@ -5,3 +5,4 @@ bbx/out/**
 bbx/workspace/**
 bbx/Bins/*/**
 !bbx/Bins/*/xzdec
+credentials.properties

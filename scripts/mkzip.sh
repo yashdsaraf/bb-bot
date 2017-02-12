@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2016 Yash D. Saraf
+# Copyright 2017 Yash D. Saraf
 # This file is part of BB-Bot.
 
 # BB-Bot is free software: you can redistribute it and/or modify
@@ -19,12 +19,12 @@
 CURRDIR=$PWD
 cd "`dirname $0`/../bbx"
 # SIGNAPKDIR=$(realpath ../../SignApk)
-ZIPALIGN=~/opt/android-sdk-linux/build-tools/25.0.2/zipalign
+# ZIPALIGN=~/opt/android-sdk-linux/build-tools/25.0.2/zipalign
 # PEM=$SIGNAPKDIR/certificate.pem
 # PK8=$SIGNAPKDIR/testkey.pk8
 
 mkzip() {
-    ZIPNAME=$(realpath ../out)/Busybox-"$VER"-"$(tr 'a-z' 'A-Z' <<<$1)".zip
+    ZIPNAME=$(realpath ../out)/Busybox-"$VER"-"$(tr 'a-z' 'A-Z' <<< $1)".zip
     7za a -tzip -r $ZIPNAME *
     # $ZIPALIGN -f -v 4 $ZIPNAME $ZIPNAME.aligned
     # mv -fv $ZIPNAME.aligned $ZIPNAME

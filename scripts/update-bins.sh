@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2016 Yash D. Saraf
+# Copyright 2017 Yash D. Saraf
 # This file is part of BB-Bot.
 
 # BB-Bot is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ for i in arm mips x86 mipseb
 do
 	echo $i
 	echo "======================================================"
-	cd Bins/$i
+	mkdir -p cd Bins/$i && cd Bins/$i
 	( rm busybox*
 	rm ssl_helper ) 2>/dev/null
 	cp -v ../../../out/ssl_helper-$i ssl_helper
@@ -48,7 +48,6 @@ EOF
 	cp ../../../out/ssl_helper-$i ssl_helper 2>/dev/null
 	echo "======================================================"
 	echo ""
-	# [[ $i != "mipseb" ]] && sed -i "s/  /=/g" bins.md5
 	cd ../..
 done
 cd $CURRDIR
