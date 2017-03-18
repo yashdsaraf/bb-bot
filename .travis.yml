@@ -1,0 +1,36 @@
+dist: trusty
+sudo: required
+language: python
+python: "3.5"
+branches:
+    except:
+      - /^v[0-9a-zA-Z\-\.]*/
+before_install:
+  - chmod +x scripts/*.{sh,py}
+  - scripts/install-dependencies.sh
+  - git config --global user.email "travis@travis-ci.org"
+  - git config --global user.name "Travis"
+install: scripts/gettoolchains.sh
+script: scripts/readytorock.sh
+env:
+  global:
+    - VER="1.26.2-YDS"
+    - STATUS="stable"
+    - BUILD_TAG="v${VER}-${TRAVIS_BUILD_NUMBER}"
+  matrix:
+    - TO_BUILD="boxemup"
+    - TO_BUILD="arm arm64"
+    - TO_BUILD="x86 x86_64"
+    - TO_BUILD="mips mips64"
+    - TO_BUILD="mipseb"
+before_deploy: git fetch origin
+deploy:
+  provider: releases
+  prerelease: true
+  api_key:
+    secure: $TOKEN
+  file_glob: true
+  file: bbx/out/*
+  skip_cleanup: true
+  on:
+    all_branches: true

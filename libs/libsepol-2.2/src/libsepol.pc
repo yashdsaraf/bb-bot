@@ -1,0 +1,11 @@
+prefix=/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=/home/rorschack/Toolchains/x86_64-uClibc/x86_64-rorschack-linux-uclibc/sysroot/usr/include
+
+Name: libsepol
+Description: SELinux policy library
+Version: 2.2
+URL: http://userspace.selinuxproject.org/
+Libs: -L${libdir} -lsepol
+Cflags: -I${includedir}
