@@ -1,0 +1,8 @@
+busybox/
+out/**
+bbx/cleaner/
+bbx/out/**
+bbx/workspace/**
+bbx/Bins/*/**
+!bbx/Bins/*/xzdec
+scripts/signapk/certificate.pem
