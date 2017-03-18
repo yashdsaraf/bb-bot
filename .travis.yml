@@ -27,7 +27,6 @@ env:
 before_deploy: git fetch origin
 deploy:
   provider: releases
-  prerelease: true
   api_key:
     secure: $TOKEN
   file_glob: true
