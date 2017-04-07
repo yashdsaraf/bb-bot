@@ -17,6 +17,7 @@ env:
     - VER="1.26.2-YDS"
     - STATUS="stable"
     - BUILD_TAG="v${VER}-${TRAVIS_BUILD_NUMBER}"
+    - TEMP_DIR=$(mktemp -d)
   matrix:
     - TO_BUILD="boxemup"
     - TO_BUILD="arm arm64"

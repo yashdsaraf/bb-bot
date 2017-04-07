@@ -1,10 +1,16 @@
 #!/sbin/sh
 #BusyBox Installer
 #by YashdSaraf@XDA
-# set -x
+
 OPFD=$2
 BBZIP=$3
 INSTALLDIR="none"
+ARCH=
+ARCH64=
+DATE=
+STATUS=
+VER=
+SELINUXPRESENT=0
 
 ui_print() {
     echo -e "ui_print $1\n
@@ -19,8 +25,8 @@ error() {
         ui_print "  "
         ui_print " ***Abort!!*** "
         ui_print "Cause: $1"
-        ui_print "Quitting installer -- Check $LOGFILE for errors"
-        if [ $INSTALLDIR != "none" ] && [ -d $INSTALLDIR/tmp.bbxyds ]
+        [ ! -z $LOGFILE ] && ui_print "Check $LOGFILE for errors"
+        if [ $INSTALLDIR != "none" -a -d $INSTALLDIR/tmp.bbxyds ]
             then rm -rf $INSTALLDIR/tmp.bbxyds
         fi
         [ "$_mounted" == "no" ] && umount /system
@@ -30,21 +36,22 @@ error() {
 }
 
 is_mounted() {
-    grep "$1" /proc/mounts > /dev/null 2>&1
+    grep "$1" /proc/mounts >/dev/null 2>&1
     return $?
 }
 
-mount_ () {
-    /sbin/mount $* || /system/bin/toolbox mount $* ||
-    /system/bin/toybox mount $* || return 1
+mount_() {
+    /sbin/mount $* || toolbox mount $* ||
+    toybox mount $* || return 1
 }
 
 mount_systemless () {
     #Following code to mount su.img is borrowed from supersu update-binary
-    [ ! -d $2 ] && {
+    if [ ! -d $2 ]
+        then
         mkdir $2 2>/dev/null
         chmod 755 $2
-    }
+    fi
     LOOPDEVICE=
     for LOOP in 0 1 2 3 4 5 6 7
     do
@@ -66,6 +73,14 @@ mount_systemless () {
         fi
     done
     return 1
+}
+
+set_permissions() {
+    chmod $2 $1
+    if ! chown $3:$4 $1 2>/dev/null
+        then chown $3.$4 $1 2>/dev/null
+    fi
+    (( $SELINUXPRESENT )) && chcon $5 $1
 }
 
 #embedded mode support
@@ -97,18 +112,12 @@ SDCARD=$(
 ) 2>/dev/null
 if [ -z $SDCARD ]
     then false
-    error "Error: No accessible partition detected"
+    error "No accessible partition detected"
 fi
 LOGFILE=$SDCARD/BusyBox-YDS-installer.log
 echo "#`date`
 #Ignore umount errors!" > $LOGFILE
 exec 2>>$LOGFILE
-
-ARCH=
-ARCH64=
-STATUS=
-DATE=
-VER=
 
 ui_print "================================================"
 ui_print "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
@@ -121,11 +130,11 @@ ui_print "Mounting /system --"
 
 if (is_mounted /system)
     then
-    mount_ -t auto -o rw,remount /system
+    mount_ -o rw,remount -t auto /system
     error "Error while mounting /system"
     _mounted="yes"
 else
-    mount_ -t auto -o rw /system
+    mount_ -o rw -t auto /system
     error "Error while mounting /system"
     _mounted="no"
 fi
@@ -155,7 +164,11 @@ ui_print "Checking if busybox needs to have SELinux support --"
 API=`grep -E "ro.build.version.sdk=.+" /system/build.prop /default.prop 2>/dev/null | grep -Eo "[^=]*$" | head -n1`
 
 SELSTAT="DISABLED"
-[ $API -ge 18 ] && [ -e /sys/fs/selinux/enforce ] && SELSTAT="ENABLED"
+if [ -e /sys/fs/selinux/enforce ]
+    then
+    SELSTAT="ENABLED"
+    SELINUXPRESENT=1
+fi
 
 for i in /sdcard /data /cache
 do
@@ -172,7 +185,7 @@ done
 unset i
 
 BBSEL=
-if echo "$SELSTAT" | grep ENABLED > /dev/null 2>&1
+if echo "$SELSTAT" | grep ENABLED >/dev/null 2>&1
     then
     BBSEL=-sel
 fi
@@ -185,33 +198,27 @@ SUIMG=$(
 ) 2>/dev/null
 MAGISK=$(
     ls /data/magisk.img || ls /cache/magisk.img
-)
+) 2>/dev/null
 
-if [ ! -z "$SUIMG" ] || [ ! -z "$MAGISK" ]
+if [ ! -z "$SUIMG" -o ! -z "$MAGISK" ]
     then
     ui_print "Systemless root detected --"
-    if [ ! -z "$SUIMG" ]
-        then SULOOPDEV=$(mount_systemless $SUIMG "/su")
-        if [ $? -eq 0 ]
-            then INSTALLDIR="/su/xbin"
-        fi
-    fi
-    if [ ! -z "$MAGISK" ]
-        then MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
-        if [ $INSTALLDIR == "none" ] && [ $? -eq 0 ]
-            then INSTALLDIR="/magisk/phh/bin"
-        fi
-    fi
+    [ ! -z "$SUIMG" ] && SULOOPDEV=$(mount_systemless $SUIMG "/su")
+    [ ! -z "$MAGISK" ] && MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
 fi
 
-if [ ! -d $INSTALLDIR ] || [ $INSTALLDIR == "none" ]
-    then
-    INSTALLDIR=/system/xbin
-    if [ ! -d $INSTALLDIR ]
-    then mkdir $INSTALLDIR
-        error "Installation directory $INSTALLDIR is not accessible"
-        chmod 0777 $INSTALLDIR
+POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin"
+for dir in $POSSIBLE_INSTALLDIRS
+do
+    if [ -w $dir ]
+        then INSTALLDIR=$dir
+        break
     fi
+done
+
+if [ $INSTALLDIR == "none" ]
+    then false
+    error "No accessible directory found for installation"
 fi
 
 ui_print "Cleaning up older busybox versions (if any) --"
@@ -227,14 +234,13 @@ do
             count=0
             for k in $(ls | grep -v busybox)
             do
-                if [ "$k" -ef "busybox" ] || ([ -x $k ] && [ "`head -n 1 $k`" == "#!$i/$j/busybox" ])
+                if [ "$k" -ef "busybox" -o -x $k -a "`head -n 1 $k`" == "#!$i/$j/busybox" ]
                     then
                     rm -f $k
                     count=$((count+1))
                 fi
             done
             rm -f busybox
-            cd /
             error "Error while cleaning BusyBox in $i"
             TOTALSYMLINKS=$((TOTALSYMLINKS+count))
         fi
@@ -263,9 +269,10 @@ do
     error "Error while checking md5sum of $i"
 done
 unset i
-chmod 0555 xzdec ssl_helper
+set_permissions xzdec 0555 0 2000 u:object_r:system_file:s0
+set_permissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
 ./xzdec $BBFILE > busybox
-chmod 0555 busybox
+set_permissions busybox 0555 0 2000 u:object_r:system_file:s0
 mv busybox ssl_helper ../
 cd ..
 rm -rf tmp.bbxyds
@@ -276,7 +283,7 @@ do
     # Only install applets which are not present in the system
     # Fixes the error of busybox applets being called instead of system's default applets
     # since magisk installs bins to /sbin which precedes /system
-    if [ "$INSTALLDIR" == "/magisk/phh/bin" ] && ([ -e /system/bin/$i ] || [ -e /system/xbin/$i ])
+    if [ "$INSTALLDIR" == "/magisk/phh/bin" ] && [ -e /system/bin/$i -o -e /system/xbin/$i ]
         then continue
     fi
     ./busybox ln -s busybox $i 2>/dev/null
@@ -285,21 +292,25 @@ do
         #Make wrapper scripts for applets if symlinking fails
         echo "#!$INSTALLDIR/busybox" > $i
         error "Error while setting up applets"
-        chmod 0755 $i
+        set_permissions $i 0555 0 2000 u:object_r:system_file:s0
     fi
 done
 unset i
 
-ui_print "Adding common system users and groups --"
-if ls /system/etc >/dev/null 2>&1
-    then etc="/system/etc"
-elif ls /etc >/dev/null 2>&1
-    then etc="/etc"
-else
-    ui_print "ETC directory is **NOT** accessible--"
+if [ -w /system/addon.d ]
+    then
+    ui_print "Adding OTA survival script --"
+    unzip -o "$BBZIP" 88-busybox.sh
+    setPermissions 88-busybox.sh 0555 0 0 u:object_r:system_file:s0
+    mv 88-busybox.sh /system/addon.d
 fi
 
-if [ ! -z $etc ]
+ui_print "Adding common system users and groups --"
+etc=$(
+    ls -d /system/etc /etc 2>/dev/null
+)
+
+if [ ! -z $etc  -a -w $etc ]
     then
     unzip -o "$BBZIP" addusergroup.sh
     . ./addusergroup.sh
@@ -311,7 +322,9 @@ if [ ! -z $etc ]
         echo "# Adding google nameservers for busybox lookup utils" >> $_resolv
         echo "nameserver 8.8.8.8" >> $_resolv
         echo "nameserver 8.8.4.4" >> $_resolv
+        set_permissions $i 0644 0 0 u:object_r:system_file:s0
     fi
+else ui_print "ETC directory is **NOT** accessible--"
 fi
 
 cd /

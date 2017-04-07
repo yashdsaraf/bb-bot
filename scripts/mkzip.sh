@@ -17,8 +17,9 @@
 
 #FLASHABLE ZIP CREATOR
 CURRDIR=$PWD
-SIGNAPKDIR=$(realpath `dirname $0`/signapk)
-cd "`dirname $0`/../bbx"
+SCRIPTDIR=$(realpath `dirname $0`)
+SIGNAPKDIR=$SCRIPTDIR/signapk
+cd "$SCRIPTDIR/../bbx"
 # ZIPALIGN=~/opt/android-sdk-linux/build-tools/25.0.2/zipalign
 PEM=$SIGNAPKDIR/testkey.x509.pem
 PK8=$SIGNAPKDIR/testkey.pk8
@@ -26,11 +27,12 @@ SIGNAPKJAR=$SIGNAPKDIR/inc.signapk.jar ##Provided by MastahF@xda
 
 mkzip() {
     ZIPNAME="Busybox-$VER-$(tr 'a-z' 'A-Z' <<< $1).zip"
-    7za a -tzip -mx=0 $ZIPNAME * > /dev/null
+    7za a -tzip -mx=0 $ZIPNAME * >/dev/null
     # $ZIPALIGN -f -v 4 $ZIPNAME $ZIPNAME.aligned
     # mv -fv $ZIPNAME.aligned $ZIPNAME
     java -Xms256m -Xmx256m -jar $SIGNAPKJAR -w $PEM $PK8 $ZIPNAME $ZIPNAME.signed
     mv $ZIPNAME.signed ../out/$ZIPNAME
+    rm $ZIPNAME
 }
 
 mkdir -p workspace
@@ -42,7 +44,7 @@ i=$TO_BUILD
 
 # echo -e "\\n$i\\n"
 echo "Zipping files--"
-cp ../addusergroup.sh .
+cp ../addusergroup.sh ../88-busybox.sh .
 if [[ $i == "boxemup" ]]
     then
     cp -r ../AIO/META-INF .
@@ -55,11 +57,15 @@ if [[ $i == "boxemup" ]]
 else
     ARCH=${i% *}
     ARCH64=${i#* }
-    cp -r ../META-INF .
-    cp ../Bins/$ARCH/* .
+    cp -r ../META-INF ../Bins/$ARCH/* .
     sed -i -e "s|^ARCH=.*|ARCH=$ARCH|;s|^ARCH64=.*|ARCH64=$ARCH64|;s|^STATUS=.*|STATUS=\"$STATUS\"|;\
-    s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|" META-INF/com/google/android/update-binary
+    s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|" META-INF/com/google/android/update-binary $SCRIPTDIR/SEE.template
     mkzip $ARCH
+    echo "Creating self extracting script--"
+    rm -r bins.md5 META-INF
+    unxz *xz
+    7za a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $TEMP_DIR/bbx.7z * >/dev/null
+    . $SCRIPTDIR/mkSEE.sh
 fi
 # done
 # rm -rf *

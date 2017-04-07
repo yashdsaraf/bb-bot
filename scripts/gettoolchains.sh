@@ -37,6 +37,7 @@ if [[ $TO_BUILD != "boxemup" ]]
             then sudo cp -avf lib/* $path
         fi
     done
+    cp -r bin $TEMP_DIR
 fi
 
 # # install aclocal-1.15

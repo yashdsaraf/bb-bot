@@ -2,16 +2,11 @@ _passwd=$etc/passwd
 _group=$etc/group
 
 addu() {
-	if [ ! -z $4 ]
-	then _shell=$4
-	else _shell=$INSTALLDIR/false
-	fi
-
-	echo "${2}:x:${1}:${1}::${3}:$_shell" >> $_passwd
+    echo "${2}:x:${1}:${1}::${3}:$4" >> $_passwd
 }
 
 addg() {
-	echo "${2}:x:${1}:${2}" >> $_group
+    echo "${2}:x:${1}:${2}" >> $_group
 }
 
 addug() {
@@ -19,8 +14,14 @@ addug() {
     grep ^$2: $_passwd || addu $* >/dev/null 2>&1
 }
 
-[ ! -f $_passwd ] && touch $_passwd
-[ ! -f $_group ] && touch $_group
+for file in $_passwd $_group
+do
+    if [ ! -f $file ]
+        then
+        touch $file
+        set_permissions $file 0644 0 0 u:object_r:system_file:s0
+    fi
+done
 
 user_name_id_list="
 1000-system
@@ -97,5 +98,5 @@ addug 0 root /data/local/cron /system/bin/sh
 
 for i in $user_name_id_list
 do
-	addug ${i%-*} ${i#*-} /system
+    addug ${i%-*} ${i#*-} /system /system/bin/false
 done
