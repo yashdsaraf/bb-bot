@@ -38,13 +38,20 @@ BBX=busybox
 DD=dd.yds
 DECOMPRESSOR=7zr
 BBFILE=bbx.7z
-SDCARD=$(
-    ls -d /sdcard || ls -d /data || ls -d /cache
-) 2>/dev/null
+
+for partition in /sdcard /data /cache
+do
+    if [ -w $partition ]
+        then SDCARD=$partition
+        break
+    fi
+done
+
 if [ -z $SDCARD ]
     then false
     error "No accessible partition detected"
 fi
+
 LOGFILE=$SDCARD/BusyBox-YDS-installer.log
 echo "#`date`" > $LOGFILE
 exec 2>>$LOGFILE
@@ -53,7 +60,7 @@ currentFile="$(pwd)/$0"
 mkdir -p $BBTEMP
 cd $BBTEMP
 
-if (which trap || type trap || builtin trap || command trap) >/dev/null 2>&1
+if (which trap || type trap) >/dev/null 2>&1
     then trap "false; error \"Ctrl-C was pressed\"" 2
 fi
 
@@ -83,7 +90,7 @@ checkIfExists() {
     for i in $*
     do
         echo "Checking if $i exists --"
-        if ! which $i > /dev/null
+        if ! (which $i || type $i) >/dev/null 2>&1
             then false
             error "Could not find $i, please use flashable zips instead"
         fi
