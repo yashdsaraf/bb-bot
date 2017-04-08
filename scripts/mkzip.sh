@@ -43,7 +43,7 @@ i=$TO_BUILD
 [[ $i == "mipseb" ]] && exit
 
 # echo -e "\\n$i\\n"
-echo "Zipping files--"
+echo "Zipping files --"
 cp ../addusergroup.sh ../88-busybox.sh .
 if [[ $i == "boxemup" ]]
     then
@@ -61,7 +61,7 @@ else
     sed -i -e "s|^ARCH=.*|ARCH=$ARCH|;s|^ARCH64=.*|ARCH64=$ARCH64|;s|^STATUS=.*|STATUS=\"$STATUS\"|;\
     s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|" META-INF/com/google/android/update-binary $SCRIPTDIR/SEE.template
     mkzip $ARCH
-    echo "Creating self extracting script--"
+    echo "Creating self extracting script --"
     rm -r bins.md5 META-INF
     unxz *xz
     7za a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $TEMP_DIR/bbx.7z * >/dev/null

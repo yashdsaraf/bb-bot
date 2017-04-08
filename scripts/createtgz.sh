@@ -21,7 +21,7 @@ cd "`dirname $0`/../out"
 # do
 i=${TO_BUILD% *}
 # echo -e "\\n$i\\n"
-echo "Creating tars--"
+echo "Creating tars --"
 tarfile="BusyBox-$VER-$(tr 'a-z' 'A-Z' <<<$i).tgz"
 tar zcf $tarfile *$i*
 mv $tarfile ../bbx/out

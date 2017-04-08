@@ -48,7 +48,7 @@ PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib CC=$_host'-cc' CFLAGS="-Os -sta
 ./configure --host=$_host --enable-static --enable-singlethreaded --enable-openssh --disable-shared  \
 C_EXTRA_FLAGS="-DWOLFSSL_STATIC_RSA" >/dev/null || exit $?
 
-echo "Building $suffix ssl_helper--"
+echo "Building $suffix ssl_helper --"
 make clean >/dev/null
 PATH=$toolc/bin:$PATH LD_LIBRARY_PATH=$toolc/lib make -j$CORES &>/dev/null
 

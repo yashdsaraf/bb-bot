@@ -69,8 +69,8 @@ mount_() {
     toybox mount $* || busybox mount $* || return 1 ) 2>/dev/null
 }
 
-sysrw="mount_ -o rw,remount -t auto /system 2>/dev/null"
-sysro="mount_ -o ro,remount -t auto /system 2>/dev/null"
+sysrw="mount_ -o rw,remount -t auto /system"
+sysro="mount_ -o ro,remount -t auto /system"
 
 error() {
     local ERRSTAT=$?
@@ -408,8 +408,8 @@ if ! (( $ONLYCLEAN ))
 
     echo "Adding common system users and groups --"
     etc=$(
-        ls -d /system/etc /etc 2>/dev/null
-    )
+        ls -d /system/etc || ls -d /etc 
+    ) 2>/dev/null
 
     if [ ! -z $etc  -a -w $etc ]
         then

@@ -22,7 +22,7 @@ cd "`dirname $0`/../bbx"
 # do
 i=${TO_BUILD% *}
 # echo $i
-echo "Placing bins in appropriate directories--"
+echo "Placing bins in appropriate directories --"
 mkdir -p cd Bins/$i && cd Bins/$i
 ( rm busybox*
 rm ssl_helper ) 2>/dev/null

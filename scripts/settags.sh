@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
-echo "Starting to tag commit--"
+echo "Starting to tag commit --"
 git tag -a $BUILD_TAG -m "Travis build $TRAVIS_BUILD_NUMBER pushed a tag."
 git push -q https://$TOKEN@github.com/$TRAVIS_REPO_SLUG.git $BUILD_TAG
-echo "Done tagging this build--"
+echo "Done tagging this build --"

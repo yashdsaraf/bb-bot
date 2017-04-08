@@ -33,6 +33,6 @@ else
     ./createtgz.sh
 fi
 ./mkzip.sh
-echo "Files to deploy--"
+echo "Files to deploy --"
 ls -lh ../bbx/out/*
 cd $CURRDIR
