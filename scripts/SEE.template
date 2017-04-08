@@ -122,6 +122,7 @@ showHelp() {
     echo "Check $LOGFILE for errors"
     echo " "
     echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
+    [ -z $1 ] || echo "Error: $1"
 }
 
 # Handle cmdline arguments
@@ -150,8 +151,7 @@ do
                 ;;
                 n|no) SELSTAT=0
                 ;;
-                *) echo "Invalid option specified => ${1#*=}"
-                    showHelp
+                *) showHelp "Invalid option specified => ${1#*=}"
                     $sysro
                     exit 1
                 ;;
@@ -163,19 +163,17 @@ do
                 if [ -w $_dir ]
                     then INSTALLDIR=$_dir
                 else
-                    echo "Directory found but not writable => $_dir"
+                    showHelp "Directory found but not writable => $_dir"
                     $sysro
                     exit 1
                 fi
             else
-                echo "Invalid directory specified => $_dir"
-                showHelp
+                showHelp "Invalid directory specified => $_dir"
                 $sysro
                 exit 1
             fi
         ;;
-        *) echo "Invalid option specified => $1"
-            showHelp
+        *) showHelp "Invalid option specified => $1"
             $sysro
             exit 1
         ;;
@@ -377,6 +375,7 @@ if ! (( $ONLYCLEAN ))
 
     cd $INSTALLDIR
     $BBX cp $BBX busybox
+    error "Error while installing busybox to $INSTALLDIR"
     setPermissions busybox 0555 0 2000 u:object_r:system_file:s0
 
     echo "Setting up applets --"
@@ -403,7 +402,7 @@ if ! (( $ONLYCLEAN ))
         echo "Adding OTA survival script --"
         $DECOMPRESSOR e $BBFILE 88-busybox.sh -aoa >/dev/null
         setPermissions 88-busybox.sh 0555 0 0 u:object_r:system_file:s0
-        cp 88-busybox.sh /system/addon.d
+        $BBX cp 88-busybox.sh /system/addon.d
     fi
 
     echo "Adding common system users and groups --"
