@@ -62,7 +62,7 @@ else
     s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|" META-INF/com/google/android/update-binary $SCRIPTDIR/SEE.template
     mkzip $ARCH
     echo "Creating self extracting script --"
-    rm -r bins.md5 META-INF
+    rm -r bins.md5 META-INF xzdec
     unxz *xz
     7za a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on $TEMP_DIR/bbx.7z * >/dev/null
     . $SCRIPTDIR/mkSEE.sh

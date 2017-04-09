@@ -377,6 +377,8 @@ if ! (( $ONLYCLEAN ))
     $BBX cp $BBX busybox
     error "Error while installing busybox to $INSTALLDIR"
     setPermissions busybox 0555 0 2000 u:object_r:system_file:s0
+    $DECOMPRESSOR e $BBFILE ssl_helper -aoa >/dev/null
+    setPermissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
 
     echo "Setting up applets --"
     for i in $(./busybox --list)
