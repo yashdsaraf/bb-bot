@@ -18,7 +18,7 @@
 if [[ $TO_BUILD == "boxemup" ]]
     then
     sudo apt-get update -qq
-    pip install -q requests
+    pip install -q requests termcolor
 else
     sudo add-apt-repository ppa:jonathonf/automake -y
     sudo apt-get update -qq
