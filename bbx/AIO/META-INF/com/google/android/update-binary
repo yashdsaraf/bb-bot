@@ -317,7 +317,7 @@ fi
 
 ui_print "Adding common system users and groups --"
 etc=$(
-    ls -d /system/etc || ls -d /etc 
+    ls -d /system/etc || ls -d /etc
 ) 2>/dev/null
 
 if [ ! -z $etc  -a -w $etc ]
