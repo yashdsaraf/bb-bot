@@ -110,20 +110,68 @@ showHelp() {
     echo "Usage: sh <script_name> [options]"
     echo " "
     echo "Options:"
-    echo "-h | --help               Show this message."
-    echo "-i | --interactive        Run script in interactive mode."
-    echo "-nc | --noclean           Do not clean previous busybox installation(s) (IF ANY)."
-    echo "-oc | --onlyclean         Clean previous busybox installation(s) (IF ANY) and exit."
-    echo "                          If supplied, all other options are ignored."
-    echo "--selinux=[(y)es|(n)o]    Enable or disable selinux support in busybox."
-    echo "--installdir=<path>       Install busybox in <path>."
+    echo "-h | --help                        Show this message."
+    echo "-i | --interactive                Run script in interactive mode."
+    echo "-nc | --noclean                 Do not clean previous busybox installation(s) (IF ANY)."
+    echo "-oc | --onlyclean               Clean previous busybox installation(s) (IF ANY) and exit."
+    echo "                                       If supplied, all other options are ignored."
+    echo "--selinux=[(y)es|(n)o]      Enable or disable selinux support in busybox."
+    echo "--installdir=<path>         Install busybox in <path>."
     echo " "
     echo "Note: This script needs to be run as root"
     echo "Check $LOGFILE for errors"
     echo " "
+    echo "Tip: To clean busybox in a custom directory, run this script in onlyclean mode and set
+                installdir to custom directory which needs to be cleaned.
+                e.g. to clean busybox in /data/local/xbin run this script as
+                sh <script_name> -oc --installdir=/data/local/xbin"
     echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
     [ -z $1 ] || echo "Error: $1"
 }
+
+# Read and parse bbx.conf if present
+for i in /sdcard /data /cache
+do
+    if [ -f $i/bbx.conf ]
+        then
+        echo "Reading $i/bbx.conf --"
+        for line in `cat $i/bbx.conf`
+        do
+            option=${line%=*}
+            value=${line#*=}
+            case $option in
+                selinux)
+                    if [ $value -eq 0 -o $value -eq 1 ]
+                        then SELSTAT=$value
+                    else
+                        echo "Invalid option set for 'selinux' => $value (should be 0 or 1)"
+                    fi
+                ;;
+                noclean)
+                    NOCLEAN=1
+                ;;
+                installdir)
+                    if ! [ -z $value ]
+                        then
+                        if ! [ -e $value ]
+                            then mkdir $value
+                            error "Error while creating $value"
+                            set_permissions $value 0755 0 0 u:object_r:system_file:s0
+                            INSTALLDIR=$value
+                        elif ! [ -d $value -a -w $value ]
+                            then echo "Directory not accessible => $value"
+                        else INSTALLDIR=$value
+                        fi
+                    else echo "Installation directory cannot be empty"
+                    fi
+                ;;
+                *) echo "Invalid entry in config => $option"
+                ;;
+            esac
+        done
+        break
+    fi
+done
 
 # Handle cmdline arguments
 while (( $# ))
@@ -158,17 +206,20 @@ do
             esac
         ;;
         --installdir=*) _dir=${1#*=}
-            if [ ! -z $_dir -a -d $_dir ]
+            if ! [ -z $_dir ]
                 then
-                if [ -w $_dir ]
-                    then INSTALLDIR=$_dir
-                else
-                    showHelp "Directory found but not writable => $_dir"
+                if ! [ -e $_dir ]
+                    then mkdir $_dir
+                    error "Error while creating $_dir"
+                    setPermissions $_dir 0755 0 0 u:object_r:system_file:s0
+                elif ! [ -d $_dir -a -w $_dir ]
+                    then
+                    showHelp "Directory not accessible => $_dir"
                     $sysro
                     exit 1
+                else INSTALLDIR=$_dir
                 fi
-            else
-                showHelp "Invalid directory specified => $_dir"
+            else showHelp "Installation directory cannot be empty"
                 $sysro
                 exit 1
             fi
@@ -275,21 +326,25 @@ error "Error while extracting busybox"
 setPermissions $BBX 0555 0 2000 u:object_r:system_file:s0
 BBX=$BBTEMP/$BBX
 
-POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin"
+POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin /system/vendor/xbin /vendor/xbin"
 if [ $INSTALLDIR == "none" ]
     then
     for dir in $POSSIBLE_INSTALLDIRS
     do
-        if [ -w $dir ]
+        if [ -d $dir -a -w $dir ]
             then INSTALLDIR=$dir
             break
         fi
     done
 
     if [ $INSTALLDIR == "none" ]
-        then false
+        then
+        INSTALLDIR="/system/xbin"
+        mkdir $INSTALLDIR
         error "No accessible directory found for installation"
+        setPermissions $INSTALLDIR 0755 0 0 u:object_r:system_file:s0
     fi
+else USER_INSTALLDIR=$INSTALLDIR
 fi
 
 if (( $INTERACTIVE ))
@@ -314,34 +369,31 @@ if ! (( $NOCLEAN ))
     echo "  "
     echo "Cleaning up older busybox versions (if any) --"
     TOTALSYMLINKS=0
-    for i in $(ls -d /system /su /magisk/phh 2>/dev/null)
+    POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/xbin /vendor/bin /system/vendor/bin /system/vendor/xbin $USER_INSTALLDIR"
+    for dir in $POSSIBLE_CLEANDIRS
     do
-        for j in xbin bin
-        do
-            if [ -e $i/$j/busybox ]
-                then
-                echo "Found in $i/$j --"
-                cd $i/$j
-                count=0
-                for k in $(ls | $BBX grep -v busybox)
-                do
-                    if [ "$k" -ef "busybox" -o -x $k -a "`$BBX head -n 1 $k`" == "#!$i/$j/busybox" ]
-                        then
-                        rm -f $k
-                        count=$((count+1))
-                    fi
-                done
-                rm -f busybox
-                [ $? -ne 0 ] && echo "Could **NOT** clean BusyBox in $i --"
-                TOTALSYMLINKS=$((TOTALSYMLINKS+count))
-            fi
-        done
+        if [ -e $dir/busybox ]
+            then
+            echo "Found in $dir --"
+            cd $dir
+            count=0
+            for k in $(ls | $BBX grep -v busybox)
+            do
+                if [ "$k" -ef "busybox" -o -x $k -a "`$BBX head -n 1 $k`" == "#!$dir/busybox" ]
+                    then
+                    rm -f $k
+                    count=$((count+1))
+                fi
+            done
+            rm -f busybox
+            [ $? -ne 0 ] && echo "Could **NOT** clean BusyBox in $i --"
+            TOTALSYMLINKS=$((TOTALSYMLINKS+count))
+        fi
     done
-fi
-
-if [ $TOTALSYMLINKS -gt 0 ]
-    then echo "Total applets removed => $TOTALSYMLINKS --"
-    echo "  "
+    if [ $TOTALSYMLINKS -gt 0 ]
+        then echo "Total applets removed => $TOTALSYMLINKS --"
+        echo "  "
+    fi
 fi
 
 if (( $INTERACTIVE ))
@@ -399,11 +451,11 @@ if ! (( $ONLYCLEAN ))
         fi
     done
 
-    if [ -w /system/addon.d ]
+    if [ -d /system/addon.d -a -w /system/addon.d ]
         then
         echo "Adding OTA survival script --"
         $DECOMPRESSOR e $BBFILE 88-busybox.sh -aoa >/dev/null
-        setPermissions 88-busybox.sh 0555 0 0 u:object_r:system_file:s0
+        setPermissions 88-busybox.sh 0755 0 0 u:object_r:system_file:s0
         $BBX cp 88-busybox.sh /system/addon.d
     fi
 
@@ -412,10 +464,10 @@ if ! (( $ONLYCLEAN ))
         ls -d /system/etc || ls -d /etc 
     ) 2>/dev/null
 
-    if [ ! -z $etc  -a -w $etc ]
+    if [ ! -z $etc -a -d $etc -a -w $etc ]
         then
         $DECOMPRESSOR e $BBFILE addusergroup.sh -aoa >/dev/null
-        . ./addusergroup.sh >/dev/null
+        . ./addusergroup.sh || echo "Warning: Could not add common system users and groups!"
         rm addusergroup.sh
 
         _resolv=$etc/resolv.conf
@@ -424,9 +476,9 @@ if ! (( $ONLYCLEAN ))
             echo "# Adding google nameservers for busybox lookup utils" >> $_resolv
             echo "nameserver 8.8.8.8" >> $_resolv
             echo "nameserver 8.8.4.4" >> $_resolv
-            setPermissions $i 0644 0 0 u:object_r:system_file:s0
-        fi
-    else echo "ETC directory is **NOT** accessible--"
+            setPermissions $_resolv 0644 0 0 u:object_r:system_file:s0
+        fi || echo "Warning: Could not create $_resolv!"
+    else echo "ETC directory is **NOT** accessible --"
     fi
 else echo "Skipping busybox installation (running in *onlyclean* mode) --"
 fi

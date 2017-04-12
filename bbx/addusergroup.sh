@@ -1,28 +1,6 @@
 _passwd=$etc/passwd
 _group=$etc/group
 
-addu() {
-    echo "${2}:x:${1}:${1}::${3}:$4" >> $_passwd
-}
-
-addg() {
-    echo "${2}:x:${1}:${2}" >> $_group
-}
-
-addug() {
-    grep ^$2: $_group || addg $1 $2 >/dev/null 2>&1
-    grep ^$2: $_passwd || addu $* >/dev/null 2>&1
-}
-
-for file in $_passwd $_group
-do
-    if [ ! -f $file ]
-        then
-        touch $file
-        set_permissions $file 0644 0 0 u:object_r:system_file:s0
-    fi
-done
-
 user_name_id_list="
 1000-system
 1001-radio
@@ -94,9 +72,33 @@ user_name_id_list="
 9999-nobody
 "
 
-addug 0 root /data/local/cron /system/bin/sh
+addu() {
+    echo "${2}:x:${1}:${1}::${3}:$4" >> $_passwd
+}
 
-for i in $user_name_id_list
-do
-    addug ${i%-*} ${i#*-} /system /system/bin/false
-done
+addg() {
+    echo "${2}:x:${1}:${2}" >> $_group
+}
+
+addug() {
+    grep ^$2: $_group || addg $1 $2 >/dev/null
+    grep ^$2: $_passwd || addu $* >/dev/null
+}
+
+(
+    for file in $_passwd $_group
+    do
+        if [ ! -f $file ]
+            then
+            touch $file || exit 1
+            set_permissions $file 0644 0 0 u:object_r:system_file:s0
+        fi
+    done
+
+    addug 0 root /data/local/cron /system/bin/sh >/dev/null
+
+    for i in $user_name_id_list
+    do
+        addug ${i%-*} ${i#*-} /system /system/bin/false >/dev/null
+    done
+)

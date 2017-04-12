@@ -176,15 +176,49 @@ if [ -e /sys/fs/selinux/enforce ]
     SELINUXPRESENT=1
 fi
 
+# Read and parse bbx.conf if present
 for i in /sdcard /data /cache
 do
-    if [ -f $i/bbxselinuxenabled ]
+    if [ -f $i/bbx.conf ]
         then
-        SELSTAT="ENABLED (user override)"
-        break
-    elif [ -f $i/bbxselinuxdisabled ]
-        then
-        SELSTAT="DISABLED (user override)"
+        ui_print "Reading $i/bbx.conf --"
+        for line in `cat $i/bbx.conf`
+        do
+            option=${line%=*}
+            value=${line#*=}
+            case $option in
+                selinux)
+                    case $value in
+                        0) SELSTAT="DISABLED (user override)"
+                        ;;
+                        1) SELSTAT="ENABLED (user override)"
+                        ;;
+                        *) ui_print "Invalid option set for 'selinux' => $value (should be 0 or 1)"
+                        ;;
+                    esac
+                ;;
+                noclean)
+                    NOCLEAN=1
+                ;;
+                installdir)
+                    if ! [ -z $value ]
+                        then
+                        if ! [ -e $value ]
+                            then mkdir $value
+                            error "Error while creating $value"
+                            set_permissions $value 0755 0 0 u:object_r:system_file:s0
+                            INSTALLDIR=$value
+                        elif ! [ -d $value -a -w $value ]
+                            then ui_print "Directory not accessible => $value"
+                        else INSTALLDIR=$value
+                        fi
+                    else ui_print "Installation directory cannot be empty"
+                    fi
+                ;;
+                *) ui_print "Invalid entry in config => $option"
+                ;;
+            esac
+        done
         break
     fi
 done
@@ -206,41 +240,49 @@ MAGISK=$(
     ls /data/magisk.img || ls /cache/magisk.img
 ) 2>/dev/null
 
-if [ ! -z "$SUIMG" -o ! -z "$MAGISK" ]
+if ! [ -z "$SUIMG" -a -z "$MAGISK" ]
     then
     ui_print "Systemless root detected --"
-    [ ! -z "$SUIMG" ] && SULOOPDEV=$(mount_systemless $SUIMG "/su")
-    [ ! -z "$MAGISK" ] && MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
+    [ -z "$SUIMG" ] || SULOOPDEV=$(mount_systemless $SUIMG "/su")
+    [ -z "$MAGISK" ] || MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
 fi
 
-POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin"
-for dir in $POSSIBLE_INSTALLDIRS
-do
-    if [ -w $dir ]
-        then INSTALLDIR=$dir
-        break
-    fi
-done
-
+POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin /system/vendor/xbin /vendor/xbin"
 if [ $INSTALLDIR == "none" ]
-    then false
-    error "No accessible directory found for installation"
+    then
+    for dir in $POSSIBLE_INSTALLDIRS
+    do
+        if [ -d $dir -a -w $dir ]
+            then INSTALLDIR=$dir
+            break
+        fi
+    done
+
+    if [ $INSTALLDIR == "none" ]
+        then
+        INSTALLDIR="/system/xbin"
+        mkdir $INSTALLDIR
+        error "No accessible directory found for installation"
+        set_permissions $INSTALLDIR 0755 0 0 u:object_r:system_file:s0
+    fi
+else USER_INSTALLDIR=$INSTALLDIR
 fi
 
-ui_print "Cleaning up older busybox versions (if any) --"
-TOTALSYMLINKS=0
-for i in $(ls -d /system /su /magisk/phh 2>/dev/null)
-do
-    for j in xbin bin
+if ! (( $NOCLEAN ))
+    then
+    ui_print "Cleaning up older busybox versions (if any) --"
+    TOTALSYMLINKS=0
+    POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/xbin /vendor/bin /system/vendor/bin /system/vendor/xbin $USER_INSTALLDIR"
+    for dir in $POSSIBLE_CLEANDIRS
     do
-        if [ -e $i/$j/busybox ]
+        if [ -e $dir/busybox ]
             then
-            ui_print "Found in $i/$j --"
-            cd $i/$j
+            ui_print "Found in $dir --"
+            cd $dir
             count=0
             for k in $(ls | grep -v busybox)
             do
-                if [ "$k" -ef "busybox" -o -x $k -a "`head -n 1 $k`" == "#!$i/$j/busybox" ]
+                if [ "$k" -ef "busybox" -o -x $k -a "`head -n 1 $k`" == "#!$dir/busybox" ]
                     then
                     rm -f $k
                     count=$((count+1))
@@ -251,12 +293,10 @@ do
             TOTALSYMLINKS=$((TOTALSYMLINKS+count))
         fi
     done
-done
-unset i
-
-if [ $TOTALSYMLINKS -gt 0 ]
-    then ui_print "Total applets removed => $TOTALSYMLINKS --"
-    ui_print "  "
+    if [ $TOTALSYMLINKS -gt 0 ]
+        then ui_print "Total applets removed => $TOTALSYMLINKS --"
+        ui_print "  "
+    fi
 fi
 
 BBFILE="${BBFILE}${BBSEL}.xz"
@@ -303,11 +343,11 @@ do
 done
 unset i
 
-if [ -w /system/addon.d ]
+if [ -d /system/addon.d -a -w /system/addon.d ]
     then
     ui_print "Adding OTA survival script --"
     unzip -o "$BBZIP" 88-busybox.sh
-    setPermissions 88-busybox.sh 0555 0 0 u:object_r:system_file:s0
+    set_permissions 88-busybox.sh 0755 0 0 u:object_r:system_file:s0
     mv 88-busybox.sh /system/addon.d
 fi
 
@@ -316,10 +356,10 @@ etc=$(
     ls -d /system/etc || ls -d /etc
 ) 2>/dev/null
 
-if [ ! -z $etc  -a -w $etc ]
+if [ ! -z $etc -a -d $etc -a -w $etc ]
     then
     unzip -o "$BBZIP" addusergroup.sh
-    . ./addusergroup.sh
+    . ./addusergroup.sh || ui_print "Warning: Could not add common system users and groups!"
     rm addusergroup.sh
 
     _resolv=$etc/resolv.conf
@@ -328,8 +368,8 @@ if [ ! -z $etc  -a -w $etc ]
         echo "# Adding google nameservers for busybox lookup utils" >> $_resolv
         echo "nameserver 8.8.8.8" >> $_resolv
         echo "nameserver 8.8.4.4" >> $_resolv
-        set_permissions $i 0644 0 0 u:object_r:system_file:s0
-    fi
+        set_permissions $_resolv 0644 0 0 u:object_r:system_file:s0
+    fi || ui_print "Warning: Could not create $_resolv!"
 else ui_print "ETC directory is **NOT** accessible --"
 fi
 
