@@ -16,6 +16,6 @@
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
 echo "Starting to tag commit --"
-git tag -a $BUILD_TAG -m "Travis build $TRAVIS_BUILD_NUMBER pushed a tag."
+git tag -a $BUILD_TAG -m "For changelog see: https://github.com/yashdsaraf/busybox/wiki/Changelog"
 git push -q https://$TOKEN@github.com/$TRAVIS_REPO_SLUG.git $BUILD_TAG
 echo "Done tagging this build --"
