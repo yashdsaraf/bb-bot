@@ -16,7 +16,7 @@ env:
   global:
     - VER="1.26.2-YDS"
     - STATUS="stable"
-    - BUILD_TAG="v${VER}-${TRAVIS_BUILD_NUMBER}"
+    - BUILD_TAG="v${VER}-$(TZ=UTC date +'%Y%m%d%H%M')"
     - TEMP_DIR=$(mktemp -d)
   matrix:
     - TO_BUILD="boxemup"
