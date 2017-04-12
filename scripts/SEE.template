@@ -129,6 +129,18 @@ showHelp() {
     [ -z $1 ] || echo "Error: $1"
 }
 
+ARCH=
+ARCH64=
+STATUS=
+DATE=
+VER=
+
+echo "================================================"
+echo "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
+echo "         -----by YashdSaraf@XDA-----            "
+echo "================================================"
+echo "  "
+
 # Read and parse bbx.conf if present
 for i in /sdcard /data /cache
 do
@@ -189,8 +201,6 @@ do
             # Reset all other options when running in *onlyclean* mode
             INTERACTIVE=0
             NOCLEAN=0
-            SELSTAT=
-            INSTALLDIR="none"
             break
         ;;
         --selinux=*)
@@ -240,18 +250,6 @@ if [ $id -ne 0 ]
     then false
     error "Script not running as root. Please rerun the script after executing 'su' command."
 fi
-
-ARCH=
-ARCH64=
-STATUS=
-DATE=
-VER=
-
-echo "================================================"
-echo "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
-echo "         -----by YashdSaraf@XDA-----            "
-echo "================================================"
-echo "  "
 
 checkIfExists dd rm mkdir mount chmod chown getprop
 if [ -e /sys/fs/selinux/enforce ]
