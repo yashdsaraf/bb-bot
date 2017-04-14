@@ -16,8 +16,7 @@
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
 ##Build busybox auto-magically
-CURRDIR=$PWD
-cd "`dirname $0`/.."
+cd "$(realpath `dirname $0`/..)"
 git clone --quiet https://github.com/yashdsaraf/busybox.git
 cd busybox
 current=nosel

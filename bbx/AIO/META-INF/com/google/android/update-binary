@@ -184,7 +184,7 @@ for i in /sdcard /data /cache
 do
     if [ -f $i/bbx.conf ]
         then
-        ui_print "Reading $i/bbx.conf --"
+        ui_print "Found $i/bbx.conf --"
         for line in `cat $i/bbx.conf`
         do
             option=${line%=*}
@@ -366,15 +366,6 @@ if [ ! -z $etc -a -d $etc -a -w $etc ]
     unzip -o "$BBZIP" addusergroup.sh
     . ./addusergroup.sh || ui_print "Warning: Could not add common system users and groups!"
     rm addusergroup.sh
-
-    _resolv=$etc/resolv.conf
-    if [ ! -f $_resolv ] || ! grep nameserver $_resolv >/dev/null 2>&1
-        then
-        echo "# Adding google nameservers for busybox lookup utils" >> $_resolv
-        echo "nameserver 8.8.8.8" >> $_resolv
-        echo "nameserver 8.8.4.4" >> $_resolv
-        set_permissions $_resolv 0644 0 0 u:object_r:system_file:s0
-    fi || ui_print "Warning: Could not create $_resolv!"
 else ui_print "ETC directory is **NOT** accessible --"
 fi
 

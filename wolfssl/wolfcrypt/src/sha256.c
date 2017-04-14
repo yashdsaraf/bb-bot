@@ -81,11 +81,6 @@ int wc_Sha256Final(Sha256* sha, byte* out)
 #if defined(USE_INTEL_SPEEDUP)
 #define HAVE_INTEL_AVX1
 #define HAVE_INTEL_AVX2
-
-#if defined(DEBUG_XMM)
-#include "stdio.h"
-#endif
-
 #endif
 
 #if defined(HAVE_INTEL_AVX2)
@@ -289,15 +284,6 @@ static void set_Transform(void) {
     #include "fsl_mmcau.h"
 #endif
 
-#ifndef WOLFSSL_HAVE_MIN
-#define WOLFSSL_HAVE_MIN
-
-    static INLINE word32 min(word32 a, word32 b)
-    {
-        return a > b ? b : a;
-    }
-
-#endif /* WOLFSSL_HAVE_MIN */
 
 #ifdef FREESCALE_LTC_SHA
 int wc_InitSha256(Sha256* sha256)
@@ -1022,13 +1008,7 @@ __asm__ volatile("vmovdqu %0, %"#mask3 ::"m"(mSHUF_DC00[0])) ;
 
 static int Transform_AVX1(Sha256* sha256)
 {
-
-    word32 W_K[64] ;  /* temp for W+K */
-
-    #if defined(DEBUG_XMM)
-    int i, j ;
-    word32 xmm[29][4*15] ;
-    #endif
+    ALIGN32 word32 W_K[64] ;  /* temp for W+K */
 
     Init_Masks(BYTE_FLIP_MASK, SHUF_00BA, SHUF_DC00) ;
     W_K_from_buff ; /* X0, X1, X2, X3 = W[0..15] ; */
@@ -1099,16 +1079,6 @@ static int Transform_AVX1(Sha256* sha256)
         
     RegToDigest(S_0,S_1,S_2,S_3,S_4,S_5,S_6,S_7) ;  
         
-    #if defined(DEBUG_XMM)
-    for(i=0; i<29; i++) {
-        for(j=0; j<4*14; j+=4)
-            printf("xmm%d[%d]=%08x,%08x,%08x,%08x\n", j/4, i, 
-                   xmm[i][j],xmm[i][j+1],xmm[i][j+2],xmm[i][j+3]) ;
-        printf("\n") ;
-    }
-        
-    for(i=0; i<64; i++)printf("W_K[%d]%08x\n", i, W_K[i]) ;
-    #endif
 
     return 0;
 }
@@ -1116,13 +1086,7 @@ static int Transform_AVX1(Sha256* sha256)
 #if defined(HAVE_INTEL_RORX)
 static int Transform_AVX1_RORX(Sha256* sha256)
 {
-
-    word32 W_K[64] ;  /* temp for W+K */
-
-    #if defined(DEBUG_XMM)
-    int i, j ;
-    word32 xmm[29][4*15] ;
-    #endif
+    ALIGN32 word32 W_K[64] ;  /* temp for W+K */
 
     Init_Masks(BYTE_FLIP_MASK, SHUF_00BA, SHUF_DC00) ;
     W_K_from_buff ; /* X0, X1, X2, X3 = W[0..15] ; */
@@ -1192,16 +1156,6 @@ static int Transform_AVX1_RORX(Sha256* sha256)
         
     RegToDigest(S_0,S_1,S_2,S_3,S_4,S_5,S_6,S_7) ;  
         
-    #if defined(DEBUG_XMM)
-    for(i=0; i<29; i++) {
-        for(j=0; j<4*14; j+=4)
-            printf("xmm%d[%d]=%08x,%08x,%08x,%08x\n", j/4, i, 
-                    xmm[i][j],xmm[i][j+1],xmm[i][j+2],xmm[i][j+3]) ;
-        printf("\n") ;
-    }
-        
-    for(i=0; i<64; i++)printf("W_K[%d]%08x\n", i, W_K[i]) ;
-    #endif
 
     return 0;
 }

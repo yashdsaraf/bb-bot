@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
-CURRDIR=$PWD
-cd "`dirname $0`/../wolfssl"
+cd "$(realpath `dirname $0`/../wolfssl)"
 
 case $TO_BUILD in
 arm*)
@@ -61,5 +60,3 @@ $_host'-gcc' -Os -Wall -I.. -c ssl_helper.c -o ssl_helper.o >/dev/null
 $_host'-gcc' -static -Wl,--start-group ssl_helper.o -lm ../src/.libs/libwolfssl.a -Wl,--end-group -o ssl_helper >/dev/null
 $_host'-strip' ssl_helper >/dev/null
 mv ssl_helper ../../out/ssl_helper-$suffix || exit 1
-
-cd $CURRDIR

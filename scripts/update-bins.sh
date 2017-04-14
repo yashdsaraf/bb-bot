@@ -16,8 +16,7 @@
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
 EXTRA=
-CURRDIR=$PWD
-cd "`dirname $0`/../bbx"
+cd "$(realpath `dirname $0`/../bbx)"
 # for i in arm x86 mips mipseb
 # do
 i=${TO_BUILD% *}
@@ -50,4 +49,3 @@ cp ../../../out/ssl_helper-$i ssl_helper 2>/dev/null
 # echo ""
 # cd ../..
 # done
-cd $CURRDIR

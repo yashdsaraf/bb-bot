@@ -129,25 +129,14 @@ showHelp() {
     [ -z $1 ] || echo "Error: $1"
 }
 
-ARCH=
-ARCH64=
-STATUS=
-DATE=
-VER=
-
-echo "================================================"
-echo "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
-echo "         -----by YashdSaraf@XDA-----            "
-echo "================================================"
-echo "  "
-
 # Read and parse bbx.conf if present
+BBXCONF=
 for i in /sdcard /data /cache
 do
     if [ -f $i/bbx.conf ]
         then
-        echo "Reading $i/bbx.conf --"
-        for line in `cat $i/bbx.conf`
+        BBXCONF=$i/bbx.conf
+        for line in `cat $BBXCONF`
         do
             option=${line%=*}
             value=${line#*=}
@@ -198,10 +187,6 @@ do
         -nc|--noclean) NOCLEAN=1
         ;;
         -oc|--onlyclean) ONLYCLEAN=1
-            # Reset all other options when running in *onlyclean* mode
-            INTERACTIVE=0
-            NOCLEAN=0
-            break
         ;;
         --selinux=*)
             case "${1#*=}" in
@@ -242,6 +227,13 @@ do
     shift
 done
 
+# Reset all other options when running in *onlyclean* mode
+if (( $ONLYCLEAN ))
+    then
+    INTERACTIVE=0
+    NOCLEAN=0
+fi
+
 #Check if running as root
 id=$(id)
 id=${id#*uid=}
@@ -251,6 +243,18 @@ if [ $id -ne 0 ]
     error "Script not running as root. Please rerun the script after executing 'su' command."
 fi
 
+ARCH=
+ARCH64=
+STATUS=
+DATE=
+VER=
+
+echo "================================================"
+echo "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
+echo "         -----by YashdSaraf@XDA-----            "
+echo "================================================"
+echo "  "
+
 checkIfExists dd rm mkdir mount chmod chown getprop
 if [ -e /sys/fs/selinux/enforce ]
     then
@@ -259,9 +263,10 @@ if [ -e /sys/fs/selinux/enforce ]
 fi
 
 echo "  "
+[ ! -z $BBXCONF ] && echo "Found $BBXCONF --"
+echo "  "
 echo "Remounting system --"
 $sysrw
-
 echo "  "
 
 # Extract files embedded in this script
@@ -467,15 +472,6 @@ if ! (( $ONLYCLEAN ))
         $DECOMPRESSOR e $BBFILE addusergroup.sh -aoa >/dev/null
         . ./addusergroup.sh || echo "Warning: Could not add common system users and groups!"
         rm addusergroup.sh
-
-        _resolv=$etc/resolv.conf
-        if [ ! -f $_resolv ] || ! grep nameserver $_resolv >/dev/null 2>&1
-            then
-            echo "# Adding google nameservers for busybox lookup utils" >> $_resolv
-            echo "nameserver 8.8.8.8" >> $_resolv
-            echo "nameserver 8.8.4.4" >> $_resolv
-            setPermissions $_resolv 0644 0 0 u:object_r:system_file:s0
-        fi || echo "Warning: Could not create $_resolv!"
     else echo "ETC directory is **NOT** accessible --"
     fi
 else echo "Skipping busybox installation (running in *onlyclean* mode) --"

@@ -16,21 +16,20 @@
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
 #FLASHABLE ZIP CREATOR
-CURRDIR=$PWD
 SCRIPTDIR=$(realpath `dirname $0`)
 SIGNAPKDIR=$SCRIPTDIR/signapk
 cd "$SCRIPTDIR/../bbx"
 # ZIPALIGN=~/opt/android-sdk-linux/build-tools/25.0.2/zipalign
 PEM=$SIGNAPKDIR/testkey.x509.pem
 PK8=$SIGNAPKDIR/testkey.pk8
-SIGNAPKJAR=$SIGNAPKDIR/inc.signapk.jar ##Provided by MastahF@xda
+SIGNAPKJAR=$SIGNAPKDIR/signapk.jar #Provided by @mfonville and @TheCrazyLex
 
 mkzip() {
     ZIPNAME="Busybox-$VER-$(tr 'a-z' 'A-Z' <<< $1).zip"
     7za a -tzip -mx=0 $ZIPNAME * >/dev/null
     # $ZIPALIGN -f -v 4 $ZIPNAME $ZIPNAME.aligned
     # mv -fv $ZIPNAME.aligned $ZIPNAME
-    java -Xms256m -Xmx256m -jar $SIGNAPKJAR -w $PEM $PK8 $ZIPNAME $ZIPNAME.signed
+    java -Djava.library.path=$SIGNAPKDIR -jar $SIGNAPKJAR -w $PEM $PK8 $ZIPNAME $ZIPNAME.signed
     mv $ZIPNAME.signed ../out/$ZIPNAME
     rm $ZIPNAME
 }
@@ -69,4 +68,3 @@ else
 fi
 # done
 # rm -rf *
-cd $CURRDIR

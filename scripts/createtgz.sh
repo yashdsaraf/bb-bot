@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
-CURRDIR=$PWD
-cd "`dirname $0`/../out"
+cd "$(realpath `dirname $0`/../out)"
 # for i in arm x86 mips mipseb
 # do
 i=${TO_BUILD% *}
@@ -26,4 +25,3 @@ tarfile="BusyBox-$VER-$(tr 'a-z' 'A-Z' <<<$i).tgz"
 tar zcf $tarfile *$i*
 mv $tarfile ../bbx/out
 # done
-cd $CURRDIR

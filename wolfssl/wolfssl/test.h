@@ -524,6 +524,7 @@ static INLINE void showPeer(WOLFSSL* ssl)
 #endif
 #if defined(SHOW_CERTS) && defined(OPENSSL_EXTRA) && defined(KEEP_OUR_CERT)
     ShowX509(wolfSSL_get_certificate(ssl), "our cert info:");
+    printf("Peer verify result = %lu\n", wolfSSL_get_verify_result(ssl));
 #endif /* SHOW_CERTS */
     printf("SSL version is %s\n", wolfSSL_get_version(ssl));
 
@@ -664,6 +665,8 @@ static INLINE void build_addr(SOCKADDR_IN_T* addr, const char* peer,
 
 static INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
 {
+    (void)sctp;
+
     if (udp)
         *sockfd = socket(AF_INET_V, SOCK_DGRAM, IPPROTO_UDP);
 #ifdef WOLFSSL_SCTP
@@ -1976,8 +1979,8 @@ static INLINE const char* mymktemp(char *tempfn, int len, int num)
     #include <wolfssl/wolfcrypt/chacha20_poly1305.h>
 
     typedef struct key_ctx {
-        byte name[WOLFSSL_TICKET_NAME_SZ];     /* name for this context */
-        byte key[16];                          /* cipher key */
+        byte name[WOLFSSL_TICKET_NAME_SZ];        /* name for this context */
+        byte key[CHACHA20_POLY1305_AEAD_KEYSIZE]; /* cipher key */
     } key_ctx;
 
     static key_ctx myKey_ctx;
