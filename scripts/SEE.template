@@ -26,6 +26,7 @@ bytesToSkipBB=00000000
 blockSize=00000001
 
 # Do not include xbin(s) in the PATH to avoid using pre-installed busybox
+# Using pre-installed busybox might lead to "device or resource busy errors" while cleaning
 export PATH=/system/bin:/vendor/bin:/bin:/sbin
 
 BBTEMP=/data/local/tmp/tmp.bbxyds
@@ -106,15 +107,16 @@ setPermissions() {
 }
 
 showHelp() {
+    echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
     echo " "
     echo "Usage: sh <script_name> [options]"
     echo " "
     echo "Options:"
-    echo "-h | --help                        Show this message."
-    echo "-i | --interactive                Run script in interactive mode."
-    echo "-nc | --noclean                 Do not clean previous busybox installation(s) (IF ANY)."
-    echo "-oc | --onlyclean               Clean previous busybox installation(s) (IF ANY) and exit."
-    echo "                                       If supplied, all other options are ignored."
+    echo " -h | --help                Show this message."
+    echo " -i | --interactive         Run script in interactive mode."
+    echo "-nc | --noclean             Do not clean previous busybox installation(s) (IF ANY)."
+    echo "-oc | --onlyclean           Clean previous busybox installation(s) (IF ANY) and exit."
+    echo "                              If supplied, all other options are ignored except installdir."
     echo "--selinux=[(y)es|(n)o]      Enable or disable selinux support in busybox."
     echo "--installdir=<path>         Install busybox in <path>."
     echo " "
@@ -125,9 +127,11 @@ showHelp() {
                 installdir to custom directory which needs to be cleaned.
                 e.g. to clean busybox in /data/local/xbin run this script as
                 sh <script_name> -oc --installdir=/data/local/xbin"
-    echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
     [ -z $1 ] || echo "Error: $1"
 }
+
+# Remount system as rw
+$sysrw
 
 # Read and parse bbx.conf if present
 BBXCONF=
@@ -264,9 +268,6 @@ fi
 
 echo "  "
 [ ! -z $BBXCONF ] && echo "Found $BBXCONF --"
-echo "  "
-echo "Remounting system --"
-$sysrw
 echo "  "
 
 # Extract files embedded in this script

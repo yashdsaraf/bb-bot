@@ -13,53 +13,45 @@ exec 2>>$LOGFILE
 
 [ -e /sys/fs/selinux/enforce ] && SELINUXPRESENT=1
 
-file_list = "
-/su/bin/busybox
-/su/xbin/busybox
-/magisk/phh/bin/busybox
-$S/bin/busybox
-$S/xbin/busybox
-$S/vendor/bin/busybox
-$S/vendor/xbin/busybox
-/vendor/bin/busybox
-/vendor/xbin/busybox
-/su/bin/ssl_helper
-/su/xbin/ssl_helper
-/magisk/phh/bin/ssl_helper
-$S/bin/ssl_helper
-$S/xbin/ssl_helper
-$S/vendor/bin/ssl_helper
-$S/vendor/xbin/ssl_helper
-/vendor/bin/ssl_helper
-/vendor/xbin/ssl_helper
-$S/etc/passwd
-$S/etc/group
-$S/etc/resolv.conf
+file_list="
+bin/busybox
+xbin/busybox
+vendor/bin/busybox
+vendor/xbin/busybox
+bin/ssl_helper
+xbin/ssl_helper
+vendor/bin/ssl_helper
+vendor/xbin/ssl_helper
+etc/passwd
+etc/group
 "
 
 case "$1" in
     backup)
-        echo "$(date)  Backing up --" >> $LOGFILE
         for file in $file_list
         do
+            file=$S/$file
             if [ -e $file ]
-                then backup_file $file
+                then
+                echo "$(date)  Backing up $file --" >> $LOGFILE
+                backup_file $file
             fi
         done
     ;;
     restore)
-        echo "$(date)  Restoring --" >> $LOGFILE
         for file in $file_list
         do
-            if [ -e "$C/$file" -a -w "${file%/*}" ]
+            file=$S/$file
+            if [ -e "$C/$file" ]
                 then
-                restore_flie $file
+                echo "$(date)  Restoring $file --" >> $LOGFILE
+                restore_file $file
                 if [ "${file##*/}" == "busybox" ]
                     then
                     for applet in `$file --list`
                     do
                         appletToInstall="${file%/*}/$applet"
-                        ln -s $file $appletToInstall
+                        ln -sf $file $appletToInstall
                         if ! [ -e $appletToInstall ]
                             then
                             echo "#!$file" > $appletToInstall
