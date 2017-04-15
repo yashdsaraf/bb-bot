@@ -292,7 +292,7 @@ if ! (( $NOCLEAN ))
                     count=$((count+1))
                 fi
             done
-            rm -f busybox
+            rm -f busybox ssl_helper
             error "Error while cleaning BusyBox in $i"
             TOTALSYMLINKS=$((TOTALSYMLINKS+count))
         fi
