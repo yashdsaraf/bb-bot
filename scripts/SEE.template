@@ -29,6 +29,7 @@ blockSize=00000001
 # Using pre-installed busybox might lead to "device or resource busy errors" while cleaning
 export PATH=/system/bin:/vendor/bin:/bin:/sbin
 
+SCRIPTNAME=$0
 BBTEMP=/data/local/tmp/tmp.bbxyds
 INSTALLDIR="none"
 INTERACTIVE=0
@@ -39,6 +40,12 @@ BBX=busybox
 DD=dd.yds
 DECOMPRESSOR=7zr
 BBFILE=bbx.7z
+
+ARCH=
+ARCH64=
+STATUS=
+DATE=
+VER=
 
 for partition in /sdcard /data /cache
 do
@@ -103,13 +110,15 @@ setPermissions() {
     if ! chown $3:$4 $1 2>/dev/null
         then chown $3.$4 $1 2>/dev/null
     fi
-    (( $SELINUXPRESENT )) && chcon $5 $1
+    if [ $SELINUXPRESENT -eq 1 ]
+        then chcon $5 $1
+    fi
 }
 
 showHelp() {
     echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
     echo " "
-    echo "Usage: sh <script_name> [options]"
+    echo "Usage: sh $SCRIPTNAME [options]"
     echo " "
     echo "Options:"
     echo " -h | --help                Show this message."
@@ -179,12 +188,17 @@ do
 done
 
 # Handle cmdline arguments
-while (( $# ))
+while [ $# -gt 0 ]
 do
     case "$1" in
         -i|--interactive) INTERACTIVE=1
         ;;
         -h|--help) showHelp
+            $sysro
+            exit 0
+        ;;
+        -v|--version) echo $VER
+            echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
             $sysro
             exit 0
         ;;
@@ -232,7 +246,7 @@ do
 done
 
 # Reset all other options when running in *onlyclean* mode
-if (( $ONLYCLEAN ))
+if [ $ONLYCLEAN -eq 1 ]
     then
     INTERACTIVE=0
     NOCLEAN=0
@@ -246,12 +260,6 @@ if [ $id -ne 0 ]
     then false
     error "Script not running as root. Please rerun the script after executing 'su' command."
 fi
-
-ARCH=
-ARCH64=
-STATUS=
-DATE=
-VER=
 
 echo "================================================"
 echo "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
@@ -299,7 +307,7 @@ if [ -z $SELSTAT ]
     then SELSTAT=$SELINUXPRESENT
 fi
 
-if (( $INTERACTIVE ))
+if [ $INTERACTIVE -eq 1 ]
     then
     echo " "
     echo "Select one --"
@@ -316,7 +324,7 @@ if (( $INTERACTIVE ))
     esac
 fi
 
-if (( $SELSTAT ))
+if [ $SELSTAT -eq 1 ]
     then
     BBX=$BBX'-sel'
     echo "SELinux support for busybox is ENABLED --"
@@ -351,7 +359,7 @@ if [ $INSTALLDIR == "none" ]
 else USER_INSTALLDIR=$INSTALLDIR
 fi
 
-if (( $INTERACTIVE ))
+if [ $INTERACTIVE -eq 1 ]
     then
     echo " "
     echo "Select one --"
@@ -368,7 +376,7 @@ if (( $INTERACTIVE ))
     esac
 fi
 
-if ! (( $NOCLEAN ))
+if [ $NOCLEAN -ne 1 ]
     then
     echo "  "
     echo "Cleaning up older busybox versions (if any) --"
@@ -390,7 +398,7 @@ if ! (( $NOCLEAN ))
                 fi
             done
             rm -f busybox ssl_helper
-            [ $? -ne 0 ] && echo "Could **NOT** clean BusyBox in $i --"
+            [ -e $dir/busybox ] && echo "Could **NOT** clean BusyBox in $dir --"
             TOTALSYMLINKS=$((TOTALSYMLINKS+count))
         fi
     done
@@ -400,7 +408,7 @@ if ! (( $NOCLEAN ))
     fi
 fi
 
-if (( $INTERACTIVE ))
+if [ $INTERACTIVE -eq 1 ]
     then
     while :
     do
@@ -422,7 +430,7 @@ if (( $INTERACTIVE ))
     done
 fi
 
-if ! (( $ONLYCLEAN ))
+if [ $ONLYCLEAN -ne 1 ]
     then
     echo "Installing busybox to $INSTALLDIR --"
     if [ $INSTALLDIR == "/magisk/phh/bin" ]

@@ -2,10 +2,6 @@
 #BusyBox Cleaner
 #by YashdSaraf@XDA
 
-#!/sbin/sh
-#BusyBox Installer
-#by YashdSaraf@XDA
-
 OPFD=$2
 BBZIP=$3
 
@@ -39,7 +35,7 @@ mount_() {
     toybox mount $* || return 1
 }
 
-mount_systemless () {
+mount_systemless() {
     #Following code to mount su.img is borrowed from supersu update-binary
     if [ ! -d $2 ]
         then
@@ -69,14 +65,6 @@ mount_systemless () {
     return 1
 }
 
-set_permissions() {
-    chmod $2 $1
-    if ! chown $3:$4 $1 2>/dev/null
-        then chown $3.$4 $1 2>/dev/null
-    fi
-    (( $SELINUXPRESENT )) && chcon $5 $1
-}
-
 #embedded mode support
 readlink /proc/$$/fd/$OPFD 2>/dev/null | grep /tmp >/dev/null
 if [ "$?" -eq "0" ]
@@ -97,6 +85,9 @@ if [ "$?" -eq "0" ]
     done
 fi
 
+( mount_ /data 
+mount_ /cache ) 2>/dev/null
+
 #Redirect all errors to LOGFILE
 for partition in /sdcard /data /cache
 do
@@ -116,10 +107,10 @@ echo "#`date`
 #Ignore umount errors!" > $LOGFILE
 exec 2>>$LOGFILE
 
-ui_print "========================="
-ui_print "     BusyBox Cleaner     "
-ui_print "----by YashdSaraf@XDA----"
-ui_print "========================="
+ui_print "============================="
+ui_print "       BusyBox Cleaner       "
+ui_print "    --by YashdSaraf@XDA--    "
+ui_print "============================="
 ui_print "  "
 sleep 1
 
@@ -155,6 +146,13 @@ do
 done
 unset i
 
+SUIMG=$(
+    ls /data/su.img || ls /cache/su.img
+) 2>/dev/null
+MAGISK=$(
+    ls /data/magisk.img || ls /cache/magisk.img
+) 2>/dev/null
+
 if ! [ -z "$SUIMG" -a -z "$MAGISK" ]
     then
     ui_print "Systemless root detected --"
@@ -164,7 +162,7 @@ fi
 
 ui_print "Cleaning up busybox --"
 TOTALSYMLINKS=0
-POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/xbin /vendor/bin /system/vendor/bin /system/vendor/xbin $INSTALLDIR"
+POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/bin /system/vendor/bin $INSTALLDIR"
 for dir in $POSSIBLE_CLEANDIRS
 do
     if [ -e $dir/busybox ]
@@ -181,7 +179,7 @@ do
             fi
         done
         rm -f busybox ssl_helper
-        error "Error while cleaning BusyBox in $i"
+        [ -e $dir/busybox ] && ui_print "Could **NOT** clean BusyBox in $dir --"
         TOTALSYMLINKS=$((TOTALSYMLINKS+count))
     fi
 done

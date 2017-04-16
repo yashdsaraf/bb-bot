@@ -80,7 +80,9 @@ set_permissions() {
     if ! chown $3:$4 $1 2>/dev/null
         then chown $3.$4 $1 2>/dev/null
     fi
-    (( $SELINUXPRESENT )) && chcon $5 $1
+    if [ $SELINUXPRESENT -eq 1 ]
+        then chcon $5 $1
+    fi
 }
 
 #embedded mode support
@@ -247,7 +249,7 @@ if ! [ -z "$SUIMG" -a -z "$MAGISK" ]
     [ -z "$MAGISK" ] || MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
 fi
 
-POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin /system/vendor/xbin /vendor/xbin"
+POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin /system/vendor/bin /vendor/bin"
 if [ $INSTALLDIR == "none" ]
     then
     for dir in $POSSIBLE_INSTALLDIRS
@@ -268,11 +270,11 @@ if [ $INSTALLDIR == "none" ]
 else USER_INSTALLDIR=$INSTALLDIR
 fi
 
-if ! (( $NOCLEAN ))
+if [ -z $NOCLEAN ]
     then
     ui_print "Cleaning up older busybox versions (if any) --"
     TOTALSYMLINKS=0
-    POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/xbin /vendor/bin /system/vendor/bin /system/vendor/xbin $USER_INSTALLDIR"
+    POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/bin /system/vendor/bin $USER_INSTALLDIR"
     for dir in $POSSIBLE_CLEANDIRS
     do
         if [ -e $dir/busybox ]
@@ -289,7 +291,7 @@ if ! (( $NOCLEAN ))
                 fi
             done
             rm -f busybox ssl_helper
-            error "Error while cleaning BusyBox in $i"
+            [ -e $dir/busybox ] && ui_print "Could **NOT** clean BusyBox in $dir --"
             TOTALSYMLINKS=$((TOTALSYMLINKS+count))
         fi
     done
