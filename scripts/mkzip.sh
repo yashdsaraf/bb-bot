@@ -25,7 +25,7 @@ PK8=$SIGNAPKDIR/testkey.pk8
 SIGNAPKJAR=$SIGNAPKDIR/signapk.jar #Provided by @mfonville and @TheCrazyLex
 
 mkzip() {
-    ZIPNAME="Busybox-$VER-$(tr 'a-z' 'A-Z' <<< $1).zip"
+    ZIPNAME="Busybox-$1.zip"
     7za a -tzip -mx=0 $ZIPNAME * >/dev/null
     # $ZIPALIGN -f -v 4 $ZIPNAME $ZIPNAME.aligned
     # mv -fv $ZIPNAME.aligned $ZIPNAME
@@ -52,14 +52,17 @@ if [[ $i == "boxemup" ]]
     for i in arm x86 mips
     do cp -r ../Bins/$i .
     done
-    mkzip universal
+    mkzip $VER-UNIVERSAL
+    rm -rf *
+    cp -r ../cleaner/META-INF .
+    mkzip CLEANER
 else
     ARCH=${i% *}
     ARCH64=${i#* }
     cp -r ../META-INF ../Bins/$ARCH/* .
     sed -i -e "s|^ARCH=.*|ARCH=$ARCH|;s|^ARCH64=.*|ARCH64=$ARCH64|;s|^STATUS=.*|STATUS=\"$STATUS\"|;\
     s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|" META-INF/com/google/android/update-binary $SCRIPTDIR/SEE.template
-    mkzip $ARCH
+    mkzip $VER-$(tr 'a-z' 'A-Z' <<< $ARCH)
     echo "Creating self extracting script --"
     rm -r bins.md5 META-INF xzdec
     unxz *xz

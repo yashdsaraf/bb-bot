@@ -1,6 +1,5 @@
 busybox/
 out/**
-bbx/cleaner/
 bbx/out/**
 bbx/workspace/**
 bbx/Bins/*/**

@@ -364,6 +364,7 @@ if [ ! -z $etc -a -d $etc -a -w $etc ]
 else ui_print "ETC directory is **NOT** accessible --"
 fi
 
+# cd to the root directory to avoid "device or resource busy" errors while unmounting 
 cd /
 
 ui_print "Unmounting /system --"
