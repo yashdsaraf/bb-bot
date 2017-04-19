@@ -1,0 +1,496 @@
+#!/system/bin/sh
+# Copyright 2017 Yash D. Saraf
+# This file is part of BB-Bot.
+
+# BB-Bot is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# BB-Bot is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
+
+byteCountDD=00000000
+byteCount7z=00000000
+byteCountBB=00000000
+# DO NOT REMOVE THE ZEROES
+# They act as a placeholder for the actual sizes
+bytesToSkipDD=00000000
+bytesToSkip7z=00000000
+bytesToSkipBB=00000000
+blockSize=00000001
+
+# Do not include xbin(s) in the PATH to avoid using pre-installed busybox
+# Using pre-installed busybox might lead to "device or resource busy errors" while cleaning
+export PATH=/system/bin:/vendor/bin:/bin:/sbin
+
+SCRIPTNAME=$0
+BBTEMP=/data/local/tmp/tmp.bbxyds
+INSTALLDIR="none"
+INTERACTIVE=0
+NOCLEAN=0
+ONLYCLEAN=0
+SELINUXPRESENT=0
+BBX=busybox
+DD=dd.yds
+DECOMPRESSOR=7zr
+BBFILE=bbx.7z
+
+ARCH=
+ARCH64=
+STATUS=
+DATE=
+VER=
+
+for partition in /sdcard /data /cache
+do
+    if [ -w $partition ]
+        then SDCARD=$partition
+        break
+    fi
+done
+
+if [ -z $SDCARD ]
+    then false
+    error "No accessible partition detected"
+fi
+
+LOGFILE=$SDCARD/BusyBox-YDS-installer.log
+echo "#`date`" > $LOGFILE
+exec 2>>$LOGFILE
+
+currentFile="$(pwd)/$0"
+mkdir -p $BBTEMP
+cd $BBTEMP
+
+if (which trap || type trap) >/dev/null 2>&1
+    then trap "false; error \"Ctrl-C was pressed\"" 2
+fi
+
+mount_() {
+    ( toolbox mount $* ||
+    toybox mount $* || busybox mount $* || return 1 ) 2>/dev/null
+}
+
+sysrw="mount_ -o rw,remount -t auto /system"
+sysro="mount_ -o ro,remount -t auto /system"
+
+error() {
+    local ERRSTAT=$?
+    if [ $ERRSTAT -ne 0 ]
+        then
+        echo "  "
+        echo " ***Abort!!*** "
+        echo "Cause: $1"
+        [ ! -z $LOGFILE ] && echo "Check $LOGFILE for errors"
+        rm -rf $BBTEMP
+        $sysro
+        exit "$ERRSTAT"
+    fi
+}
+
+checkIfExists() {
+    for i in $*
+    do
+        echo "Checking if $i exists --"
+        if ! (which $i || type $i) >/dev/null 2>&1
+            then false
+            error "Could not find $i, please use flashable zips instead"
+        fi
+    done
+}
+
+setPermissions() {
+    chmod $2 $1
+    if ! chown $3:$4 $1 2>/dev/null
+        then chown $3.$4 $1 2>/dev/null
+    fi
+    if [ $SELINUXPRESENT -eq 1 ]
+        then chcon $5 $1
+    fi
+}
+
+showHelp() {
+    echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
+    echo " "
+    echo "Usage: sh $SCRIPTNAME [options]"
+    echo " "
+    echo "Options:"
+    echo " -h | --help                Show this message."
+    echo " -i | --interactive         Run script in interactive mode."
+    echo "-nc | --noclean             Do not clean previous busybox installation(s) (IF ANY)."
+    echo "-oc | --onlyclean           Clean previous busybox installation(s) (IF ANY) and exit."
+    echo "                              If supplied, all other options are ignored except installdir."
+    echo "--selinux=[(y)es|(n)o]      Enable or disable selinux support in busybox."
+    echo "--installdir=<path>         Install busybox in <path>."
+    echo " "
+    echo "Note: This script needs to be run as root"
+    echo "Check $LOGFILE for errors"
+    echo " "
+    echo "Tip: To clean busybox in a custom directory, run this script in onlyclean mode and set
+                installdir to custom directory which needs to be cleaned.
+                e.g. to clean busybox in /data/local/xbin run this script as
+                sh <script_name> -oc --installdir=/data/local/xbin"
+    [ -z $1 ] || echo "Error: $1"
+}
+
+# Remount system as rw
+$sysrw
+
+# Read and parse bbx.conf if present
+BBXCONF=
+for i in /sdcard /data /cache
+do
+    if [ -f $i/bbx.conf ]
+        then
+        BBXCONF=$i/bbx.conf
+        for line in `cat $BBXCONF`
+        do
+            option=${line%=*}
+            value=${line#*=}
+            case $option in
+                selinux)
+                    if [ $value -eq 0 -o $value -eq 1 ]
+                        then SELSTAT=$value
+                    else
+                        echo "Invalid option set for 'selinux' => $value (should be 0 or 1)"
+                    fi
+                ;;
+                noclean)
+                    NOCLEAN=1
+                ;;
+                installdir)
+                    if ! [ -z $value ]
+                        then
+                        if ! [ -e $value ]
+                            then mkdir $value
+                            error "Error while creating $value"
+                            set_permissions $value 0755 0 0 u:object_r:system_file:s0
+                            INSTALLDIR=$value
+                        elif ! [ -d $value -a -w $value ]
+                            then echo "Directory not accessible => $value"
+                        else INSTALLDIR=$value
+                        fi
+                    else echo "Installation directory cannot be empty"
+                    fi
+                ;;
+                *) echo "Invalid entry in config => $option"
+                ;;
+            esac
+        done
+        break
+    fi
+done
+
+# Handle cmdline arguments
+while [ $# -gt 0 ]
+do
+    case "$1" in
+        -i|--interactive) INTERACTIVE=1
+        ;;
+        -h|--help) showHelp
+            $sysro
+            exit 0
+        ;;
+        -v|--version) echo $VER
+            echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
+            $sysro
+            exit 0
+        ;;
+        -nc|--noclean) NOCLEAN=1
+        ;;
+        -oc|--onlyclean) ONLYCLEAN=1
+        ;;
+        --selinux=*)
+            case "${1#*=}" in
+                y|yes) SELSTAT=1
+                ;;
+                n|no) SELSTAT=0
+                ;;
+                *) showHelp "Invalid option specified => ${1#*=}"
+                    $sysro
+                    exit 1
+                ;;
+            esac
+        ;;
+        --installdir=*) _dir=${1#*=}
+            if ! [ -z $_dir ]
+                then
+                if ! [ -e $_dir ]
+                    then mkdir $_dir
+                    error "Error while creating $_dir"
+                    setPermissions $_dir 0755 0 0 u:object_r:system_file:s0
+                elif ! [ -d $_dir -a -w $_dir ]
+                    then
+                    showHelp "Directory not accessible => $_dir"
+                    $sysro
+                    exit 1
+                else INSTALLDIR=$_dir
+                fi
+            else showHelp "Installation directory cannot be empty"
+                $sysro
+                exit 1
+            fi
+        ;;
+        *) showHelp "Invalid option specified => $1"
+            $sysro
+            exit 1
+        ;;
+    esac
+    shift
+done
+
+# Reset all other options when running in *onlyclean* mode
+if [ $ONLYCLEAN -eq 1 ]
+    then
+    INTERACTIVE=0
+    NOCLEAN=0
+fi
+
+#Check if running as root
+id=$(id)
+id=${id#*uid=}
+id=${id%%\(*}
+if [ $id -ne 0 ]
+    then false
+    error "Script not running as root. Please rerun the script after executing 'su' command."
+fi
+
+echo "================================================"
+echo "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
+echo "         -----by YashdSaraf@XDA-----            "
+echo "================================================"
+echo "  "
+
+checkIfExists dd rm mkdir mount chmod chown getprop
+if [ -e /sys/fs/selinux/enforce ]
+    then
+    SELINUXPRESENT=1
+    checkIfExists chcon
+fi
+
+echo "  "
+[ ! -z $BBXCONF ] && echo "Found $BBXCONF --"
+echo "  "
+
+# Extract files embedded in this script
+echo "Extracting $DD --"
+dd if=$currentFile skip=$bytesToSkipDD bs=$blockSize count=$byteCountDD of=$DD 2>/dev/null
+setPermissions $DD 0555 0 2000 u:object_r:system_file:s0
+DD=$BBTEMP/$DD
+$DD
+[ $? -eq 255 ]
+error "Please make sure your device is of $ARCH or $ARCH64 architecture"
+
+echo "Extracting $DECOMPRESSOR --"
+$DD $currentFile $DECOMPRESSOR $bytesToSkip7z $byteCount7z
+setPermissions $DECOMPRESSOR 0555 0 2000 u:object_r:system_file:s0
+DECOMPRESSOR=$BBTEMP/$DECOMPRESSOR
+
+echo "Extracting $BBFILE --"
+$DD $currentFile $BBFILE $bytesToSkipBB $byteCountBB
+setPermissions $BBFILE 0777 2000 2000 u:object_r:system_file:s0
+BBFILE=$BBTEMP/$BBFILE
+
+if [ ! -z `getprop ro.product.cpu.abilist64` ]
+    then
+    echo "64 bit arch detected --"
+    BBX=busybox64
+fi
+
+if [ -z $SELSTAT ]
+    then SELSTAT=$SELINUXPRESENT
+fi
+
+if [ $INTERACTIVE -eq 1 ]
+    then
+    echo " "
+    echo "Select one --"
+    echo "1. Disable SELinux support in busybox"
+    echo "2. Enable SELinux support in busybox"
+    echo " "
+    echo "Enter 1 or 2 (default: $((SELSTAT+1))) -"
+    read option
+    case "$option" in
+        1*) SELSTAT=0
+        ;;
+        2*) SELSTAT=1
+        ;;
+    esac
+fi
+
+if [ $SELSTAT -eq 1 ]
+    then
+    BBX=$BBX'-sel'
+    echo "SELinux support for busybox is ENABLED --"
+else
+    echo "SELinux support for busybox is DISABLED --"
+fi
+
+echo "Extracting busybox --"
+$DECOMPRESSOR e $BBFILE $BBX -aoa >/dev/null
+error "Error while extracting busybox"
+setPermissions $BBX 0555 0 2000 u:object_r:system_file:s0
+BBX=$BBTEMP/$BBX
+
+POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin /system/vendor/xbin /vendor/xbin"
+if [ $INSTALLDIR == "none" ]
+    then
+    for dir in $POSSIBLE_INSTALLDIRS
+    do
+        if [ -d $dir -a -w $dir ]
+            then INSTALLDIR=$dir
+            break
+        fi
+    done
+
+    if [ $INSTALLDIR == "none" ]
+        then
+        INSTALLDIR="/system/xbin"
+        mkdir $INSTALLDIR
+        error "No accessible directory found for installation"
+        setPermissions $INSTALLDIR 0755 0 0 u:object_r:system_file:s0
+    fi
+else USER_INSTALLDIR=$INSTALLDIR
+fi
+
+if [ $INTERACTIVE -eq 1 ]
+    then
+    echo " "
+    echo "Select one --"
+    echo "1. Clean previous busybox installation(s) (IF ANY)?"
+    echo "2. Do not clean previous busybox installation(s)"
+    echo " "
+    echo "Enter 1 or 2 (default: $((NOCLEAN+1))): "
+    read clean
+    case "$clean" in
+        1*) NOCLEAN=0
+            ;;
+        2*) NOCLEAN=1
+            ;;
+    esac
+fi
+
+if [ $NOCLEAN -ne 1 ]
+    then
+    echo "  "
+    echo "Cleaning up older busybox versions (if any) --"
+    TOTALSYMLINKS=0
+    POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/xbin /vendor/bin /system/vendor/bin /system/vendor/xbin $USER_INSTALLDIR"
+    for dir in $POSSIBLE_CLEANDIRS
+    do
+        if [ -e $dir/busybox ]
+            then
+            echo "Found in $dir --"
+            cd $dir
+            count=0
+            for k in $(ls | $BBX grep -v busybox)
+            do
+                if [ "$k" -ef "busybox" -o -x $k -a "`$BBX head -n 1 $k`" == "#!$dir/busybox" ]
+                    then
+                    rm -f $k
+                    count=$((count+1))
+                fi
+            done
+            rm -f busybox ssl_helper
+            [ -e $dir/busybox ] && echo "Could **NOT** clean BusyBox in $dir --"
+            TOTALSYMLINKS=$((TOTALSYMLINKS+count))
+        fi
+    done
+    if [ $TOTALSYMLINKS -gt 0 ]
+        then echo "Total applets removed => $TOTALSYMLINKS --"
+        echo "  "
+    fi
+fi
+
+if [ $INTERACTIVE -eq 1 ]
+    then
+    while :
+    do
+        echo " "
+        echo "Current installation directory is $INSTALLDIR."
+        echo "Would you like to change it? (y)es or (n)o"
+        read change
+        if [ $change == "y" -o $change == "yes" ]
+            then echo " "
+            echo "Enter a new installation directory:"
+            read directory
+            if [ -w $directory ]
+                then INSTALLDIR=$directory
+                break
+            else
+                echo "Invalid directory specified."
+            fi
+        fi
+    done
+fi
+
+if [ $ONLYCLEAN -ne 1 ]
+    then
+    echo "Installing busybox to $INSTALLDIR --"
+    if [ $INSTALLDIR == "/magisk/phh/bin" ]
+        then echo "Note: A reboot is recommended when installing busybox to $INSTALLDIR"
+    fi
+
+    cd $INSTALLDIR
+    $BBX cp $BBX busybox
+    error "Error while installing busybox to $INSTALLDIR"
+    setPermissions busybox 0555 0 2000 u:object_r:system_file:s0
+    $DECOMPRESSOR e $BBFILE ssl_helper -aoa >/dev/null
+    setPermissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
+
+    echo "Setting up applets --"
+    for i in $(./busybox --list)
+    do
+        # Only install applets which are not present in the system
+        # Fixes the error of busybox applets being called instead of system's default applets
+        # since magisk installs bins to /sbin which precedes /system
+        if [ "$INSTALLDIR" == "/magisk/phh/bin" ] && [ -e /system/bin/$i -o -e /system/xbin/$i ]
+            then continue
+        fi
+        ./busybox ln -s busybox $i 2>/dev/null
+        if [ ! -e $i ]
+            then
+            # Make wrapper scripts for applets if symlinking fails
+            echo "#!$INSTALLDIR/busybox" > $i
+            error "Error while setting up applets"
+            setPermissions $i 0555 0 2000 u:object_r:system_file:s0
+        fi
+    done
+
+    if [ -d /system/addon.d -a -w /system/addon.d ]
+        then
+        echo "Adding OTA survival script --"
+        $DECOMPRESSOR e $BBFILE 88-busybox.sh -aoa >/dev/null
+        setPermissions 88-busybox.sh 0755 0 0 u:object_r:system_file:s0
+        $BBX cp 88-busybox.sh /system/addon.d
+    fi
+
+    echo "Adding common system users and groups --"
+    etc=$(
+        ls -d /system/etc || ls -d /etc 
+    ) 2>/dev/null
+
+    if [ ! -z $etc -a -d $etc -a -w $etc ]
+        then
+        $DECOMPRESSOR e $BBFILE addusergroup.sh -aoa >/dev/null
+        . ./addusergroup.sh || echo "Warning: Could not add common system users and groups!"
+        rm addusergroup.sh
+    else echo "ETC directory is **NOT** accessible --"
+    fi
+else echo "Skipping busybox installation (running in *onlyclean* mode) --"
+fi
+
+rm -rf $BBTEMP
+$sysro
+echo "  "
+echo "      ====== DONE ======"
+echo "  "
+exit 0
+
+#######################PUT FILES AFTER THIS LINE#######################

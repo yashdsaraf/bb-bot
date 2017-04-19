@@ -20,6 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile
 from os import environ, remove
 from time import sleep
+from termcolor import colored
 
 token = environ['TOKEN']
 tag = environ['BUILD_TAG']
@@ -31,9 +32,8 @@ auth = (slug.split('/')[0],token) #Github username and OAuth token
 archs = ('ARM','X86','MIPS')
 
 def download(arch):
-    count = 0
     file = 'Busybox-' + ver + '-' + arch + '.zip'
-    print('Downloading ' + file + '--')
+    print('Looking for ' + file + ' --')
     while True:
         response = requests.get(url, auth=auth)
         for asset in response.json():
@@ -41,47 +41,44 @@ def download(arch):
                 asset_url = asset['url']
                 break
         else:
-            sys.stdout.write('\r{:d}s'.format(count))
-            sys.stdout.flush()
-            count += 5
             sleep(5)
+            print(colored('Still looking for ' + file + ' --', 'yellow'))
             continue
-        print('')
         break
+
+    print(colored('Downloading ' + file + ' --', 'blue'))
     response = requests.get(asset_url, auth=auth, headers={'Accept': 'application/octet-stream'})
 
     if response.status_code == 302:
         response = requests.get(response.headers.get('location'), auth=auth)
-    elif response.status_code != 200:
-        print('Error ' + str(response.status_code) + ': ' + response.json()['message'])
+
+    if response.status_code != 200:
+        print(colored('Error ' + str(response.status_code) + ': ' + response.json()['message'], 'red'))
         sys.exit()
 
     with open(file, 'wb') as fd:
         for chunk in response.iter_content(chunk_size=128):
             fd.write(chunk)
 
-    print('Unzipping ' + file + '--')
+    print(colored('Unzipping ' + file + ' --', 'blue'))
     with ZipFile(file) as zipfile:
-        names = filter(lambda x: 'META-INF' not in x, zipfile.namelist())
+        names = filter(lambda x: 'META-INF' not in x and '.sh' not in x, zipfile.namelist())
         zipfile.extractall('../bbx/Bins/' + arch.lower(), names)
 
+    print(colored('Done with ' + file + '!', 'green'))
     remove(file)
 
-print('Looking for the given tag--')
-count = 0
+print('Looking for the given tag --')
 while True:
     response = requests.get(url, auth=auth)
     data = response.json()
     if response.status_code == 200:
         break
-    sys.stdout.write('\r{:d}s'.format(count))
-    sys.stdout.flush()
-    count += 5
     sleep(5)
+    print(colored('Still looking for the given tag --', 'yellow'))
 
-print('')
 url = data['url'] + '/assets'
-print('Tag found!')
+print(colored('Tag found!', 'green'))
 
 with ThreadPoolExecutor() as executor:
     executor.map(download, archs)

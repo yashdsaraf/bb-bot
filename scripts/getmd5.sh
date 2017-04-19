@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
-CURRDIR=$PWD
-cd "`dirname $0`/../bbx/Bins"
+cd "$(realpath `dirname $0`/../bbx/Bins)"
 for i in arm x86 mips mipseb
 do
     cd $i
@@ -29,4 +28,3 @@ do
     echo -e "====================================================\n"
     cd ..
 done
-cd $CURRDIR

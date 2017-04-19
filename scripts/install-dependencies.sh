@@ -15,13 +15,38 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
+sudo apt-get update -qq
+sudo apt-get install -qq p7zip-full realpath
+
 if [[ $TO_BUILD == "boxemup" ]]
     then
-    sudo apt-get update -qq
-    pip install -q requests
-else
-    sudo add-apt-repository ppa:jonathonf/automake -y
-    sudo apt-get update -qq
-    sudo apt-get install -qq automake-1.15
+    pip install -q requests termcolor
+    exit 0
 fi
-sudo apt-get install -qq p7zip-full realpath
+
+sudo add-apt-repository ppa:jonathonf/automake -y
+sudo apt-get update -qq
+sudo apt-get install -qq automake-1.15
+
+cd "$(realpath `dirname $0`)"
+export CORES="`lscpu | grep '^CPU(s)' | cut -d : -f2 | tr -d ' '`"
+echo "Cores: $CORES"
+git clone -b ${TO_BUILD% *} --single-branch https://github.com/yashdsaraf/toolchains || exit 1
+cd toolchains
+if [[ $TO_BUILD != "boxemup" ]]
+    then
+    for i in *.tar.xz
+    do
+        echo "Extracting $i--"
+        ( xz -dcq -T$CORES $i | tar xf - ) || exit 1
+    done
+    for path in /usr/lib/x86_64-linux-gnu /usr/lib/i386-linux-gnu /usr/lib
+    do
+        if [[ -d $path ]]
+            then sudo cp -avf lib/* $path
+        fi
+    done
+    if [[ -d bin ]]
+        then cp -r bin $TEMP_DIR
+    fi
+fi

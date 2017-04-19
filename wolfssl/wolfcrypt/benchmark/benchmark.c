@@ -339,7 +339,13 @@ int benchmark_test(void *args)
 
 #if defined(HAVE_LOCAL_RNG)
     {
-        int rngRet = wc_InitRng(&rng);
+        int rngRet;
+
+#ifndef HAVE_FIPS
+        rngRet = wc_InitRng_ex(&rng, HEAP_HINT);
+#else
+        rngRet = wc_InitRng(&rng);
+#endif
         if (rngRet < 0) {
             printf("InitRNG failed\n");
             return rngRet;
@@ -457,8 +463,12 @@ int benchmark_test(void *args)
     #ifdef HAVE_ECC_ENCRYPT
         bench_eccEncrypt();
     #endif
+
     #if defined(FP_ECC)
         wc_ecc_fp_free();
+    #endif
+    #ifdef ECC_CACHE_CURVE
+        wc_ecc_curve_cache_free();
     #endif
 #endif
 
@@ -488,6 +498,10 @@ int benchmark_test(void *args)
         exit(-1);
     }
 #endif
+
+    if (wolfCrypt_Cleanup() != 0) {
+        printf("error with wolfCrypt_Cleanup\n");
+    }
 
 #if defined(USE_WOLFSSL_MEMORY) && defined(WOLFSSL_TRACK_MEMORY)
     ShowMemoryTracker();
@@ -534,7 +548,11 @@ void bench_rng(void)
 #endif
 
 #ifndef HAVE_LOCAL_RNG
+#ifndef HAVE_FIPS
+    ret = wc_InitRng_ex(&rng, HEAP_HINT);
+#else
     ret = wc_InitRng(&rng);
+#endif
     if (ret < 0) {
         printf("InitRNG failed\n");
         return;
@@ -633,6 +651,7 @@ void bench_aes(int show)
     }
 #endif
 
+#ifdef HAVE_AES_DECRYPT
     ret = wc_AesSetKey(&enc, key, 16, iv, AES_DECRYPTION);
     if (ret != 0) {
         printf("AesSetKey failed, ret = %d\n", ret);
@@ -659,6 +678,8 @@ void bench_aes(int show)
         SHOW_INTEL_CYCLES
         printf("\n");
     }
+#endif /* HAVE_AES_DECRYPT */
+
 #ifdef WOLFSSL_ASYNC_CRYPT
     wc_AesAsyncFree(&enc);
 #endif
@@ -1074,7 +1095,7 @@ void bench_chacha(void)
 }
 #endif /* HAVE_CHACHA*/
 
-#if( defined( HAVE_CHACHA ) && defined( HAVE_POLY1305 ) )
+#if defined(HAVE_CHACHA) && defined(HAVE_POLY1305)
 void bench_chacha20_poly1305_aead(void)
 {
     double start, total, persec;

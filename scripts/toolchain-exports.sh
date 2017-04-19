@@ -14,13 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 ##SET TOOLCHAIN NAMES
-TOOLCHAINDIR="$PWD/toolchains"
 ARM=$TOOLCHAINDIR/armhf-uClibc
 #ARM=$TOOLCHAINDIR/arm-uClibc
-ARM64=$TOOLCHAINDIR/aarch64-glibc
-MIPS64=$TOOLCHAINDIR/mips64el-glibc
+ARM64=$TOOLCHAINDIR/aarch64-uClibc
+MIPS64=$TOOLCHAINDIR/mips64el-uClibc
 MIPS=$TOOLCHAINDIR/mipsel-uClibc
-MIPSEB=$TOOLCHAINDIR/mipseb-glibc
+MIPSEB=$TOOLCHAINDIR/mipseb-uClibc
 X86=$TOOLCHAINDIR/i586-uClibc
 X86_64=$TOOLCHAINDIR/x86_64-uClibc
 ARMMUSL=$TOOLCHAINDIR/arm-musl

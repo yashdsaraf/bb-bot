@@ -310,7 +310,8 @@ int wc_SrpSetParams(Srp* srp, const byte* N,    word32 nSz,
     byte digest1[SRP_MAX_DIGEST_SIZE];
     byte digest2[SRP_MAX_DIGEST_SIZE];
     byte pad = 0;
-    int i, j, r;
+    int i, r;
+    int j = 0;
 
     if (!srp || !N || !g || !salt || nSz < gSz)
         return BAD_FUNC_ARG;
@@ -454,12 +455,12 @@ int wc_SrpSetVerifier(Srp* srp, const byte* verifier, word32 size)
     return mp_read_unsigned_bin(&srp->auth, verifier, size);
 }
 
-int wc_SrpSetPrivate(Srp* srp, const byte* private, word32 size)
+int wc_SrpSetPrivate(Srp* srp, const byte* priv, word32 size)
 {
     mp_int p;
     int r;
 
-    if (!srp || !private || !size)
+    if (!srp || !priv || !size)
         return BAD_FUNC_ARG;
 
     if (mp_iszero(&srp->auth) == MP_YES)
@@ -468,7 +469,7 @@ int wc_SrpSetPrivate(Srp* srp, const byte* private, word32 size)
     r = mp_init(&p);
     if (r != MP_OKAY)
         return MP_INIT_E;
-    if (!r) r = mp_read_unsigned_bin(&p, private, size);
+    if (!r) r = mp_read_unsigned_bin(&p, priv, size);
     if (!r) r = mp_mod(&p, &srp->N, &srp->priv);
     if (!r) r = mp_iszero(&srp->priv) == MP_YES ? SRP_BAD_KEY_E : 0;
 

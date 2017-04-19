@@ -17,9 +17,9 @@
 
 set -e
 export DATE="`date +'%d %b/%y'`"
-CURRDIR=$PWD
-cd "`dirname $0`"
+cd "$(realpath `dirname $0`)"
 echo -e "\n\nStarting BB-Bot build $BUILD_TAG ${TO_BUILD}\n\n"
+TOOLCHAINDIR="$PWD/toolchains"
 . ./toolchain-exports.sh
 mkdir -p ../out ../bbx/out
 if [[ $TO_BUILD == "boxemup" ]]
@@ -33,6 +33,5 @@ else
     ./createtgz.sh
 fi
 ./mkzip.sh
-echo "Files to deploy--"
+echo "Files to deploy --"
 ls -lh ../bbx/out/*
-cd $CURRDIR

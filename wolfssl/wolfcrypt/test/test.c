@@ -101,6 +101,9 @@
 #ifdef WOLFSSL_ASYNC_CRYPT
     #include <wolfssl/wolfcrypt/async.h>
 #endif
+#if defined(OPENSSL_EXTRA) || defined(DEBUG_WOLFSSL_VERBOSE)
+    #include <wolfssl/wolfcrypt/logging.h>
+#endif
 
 #ifdef _MSC_VER
     /* 4996 warning to use MS extensions e.g., strcpy_s instead of strncpy */
@@ -111,6 +114,7 @@
     #include <wolfssl/openssl/evp.h>
     #include <wolfssl/openssl/rand.h>
     #include <wolfssl/openssl/hmac.h>
+    #include <wolfssl/openssl/aes.h>
     #include <wolfssl/openssl/des.h>
 #endif
 
@@ -323,7 +327,9 @@ int wolfcrypt_test(void* args)
     wolfSSL_Debugging_ON();
 #endif
 
-    wolfCrypt_Init();
+#if defined(OPENSSL_EXTRA) || defined(DEBUG_WOLFSSL_VERBOSE)
+    wc_SetLoggingHeap(HEAP_HINT);
+#endif
 
 #ifdef HAVE_FIPS
     wolfCrypt_SetCb_fips(myFipsCb);
@@ -669,6 +675,12 @@ int wolfcrypt_test(void* args)
         else
             printf( "ECC buffer test passed!\n");
     #endif
+    #if defined(FP_ECC)
+        wc_ecc_fp_free();
+    #endif
+    #ifdef ECC_CACHE_CURVE
+        wc_ecc_curve_cache_free();
+    #endif
 #endif
 
 #ifdef HAVE_CURVE25519
@@ -744,7 +756,13 @@ int wolfcrypt_test(void* args)
         args.argc = argc;
         args.argv = argv;
 
+        wolfCrypt_Init();
+
         wolfcrypt_test(&args);
+
+        if (wolfCrypt_Cleanup() != 0) {
+            return err_sys("Error with wolfCrypt_Cleanup!\n", -1239);
+        }
 
 #ifdef HAVE_WNR
         if (wc_FreeNetRandom() < 0)
@@ -2081,7 +2099,7 @@ int hc128_test(void)
                                            (word32)test_hc128[i].outLen) != 0) {
             return -110;
         }
-        if (wc_Hc128_Process(&dec, plain, cipher, 
+        if (wc_Hc128_Process(&dec, plain, cipher,
                                            (word32)test_hc128[i].outLen) != 0) {
             return -115;
         }
@@ -2861,11 +2879,12 @@ int aes_test(void)
 {
 #if defined(HAVE_AES_CBC) || defined(WOLFSSL_AES_COUNTER)
     Aes enc;
-    Aes dec;
-
     byte cipher[AES_BLOCK_SIZE * 4];
+#ifdef HAVE_AES_DECRYPT
+    Aes dec;
     byte plain [AES_BLOCK_SIZE * 4];
 #endif
+#endif /* HAVE_AES_CBC || WOLFSSL_AES_COUNTER */
     int  ret = 0;
 
 #ifdef HAVE_AES_CBC
@@ -2893,9 +2912,11 @@ int aes_test(void)
     ret = wc_AesSetKey(&enc, key, AES_BLOCK_SIZE, iv, AES_ENCRYPTION);
     if (ret != 0)
         return -1001;
+#ifdef HAVE_AES_DECRYPT
     ret = wc_AesSetKey(&dec, key, AES_BLOCK_SIZE, iv, AES_DECRYPTION);
     if (ret != 0)
         return -1002;
+#endif
 
     ret = wc_AesCbcEncrypt(&enc, cipher, msg,   AES_BLOCK_SIZE);
     if (ret != 0)
@@ -4317,6 +4338,9 @@ int memory_test(void)
     word32 size[] = { WOLFMEM_BUCKETS };
     word32 dist[] = { WOLFMEM_DIST };
     byte buffer[30000]; /* make large enough to involve many bucket sizes */
+    int pad = -(int)((wolfssl_word)&(buffer[0])) & (WOLFSSL_STATIC_ALIGN - 1);
+              /* pad to account for if head of buffer is not at set memory
+               * alignment when tests are ran */
 
     /* check macro settings */
     if (sizeof(size)/sizeof(word32) != WOLFMEM_MAX_BUCKETS) {
@@ -4341,7 +4365,7 @@ int memory_test(void)
     }
 
     /* check that padding size returned is possible */
-    if (wolfSSL_MemoryPaddingSz() <= WOLFSSL_STATIC_ALIGN) {
+    if (wolfSSL_MemoryPaddingSz() < WOLFSSL_STATIC_ALIGN) {
         return -101; /* no room for wc_Memory struct */
     }
 
@@ -4354,8 +4378,8 @@ int memory_test(void)
     }
 
     /* check function to return optimum buffer size (rounded down) */
-    if ((ret = wolfSSL_StaticBufferSz(buffer, sizeof(buffer), WOLFMEM_GENERAL))
-            % WOLFSSL_STATIC_ALIGN != 0) {
+    ret = wolfSSL_StaticBufferSz(buffer, sizeof(buffer), WOLFMEM_GENERAL);
+    if ((ret - pad) % WOLFSSL_STATIC_ALIGN != 0) {
         return -104; /* not aligned! */
     }
 
@@ -4372,21 +4396,22 @@ int memory_test(void)
     }
 
     ret = wolfSSL_MemoryPaddingSz();
+    ret += pad; /* add space that is going to be needed if buffer not aligned */
     if (wolfSSL_StaticBufferSz(buffer, size[0] + ret + 1, WOLFMEM_GENERAL) !=
             (ret + (int)size[0])) {
         return -108; /* did not round down to nearest bucket value */
     }
 
     ret = wolfSSL_StaticBufferSz(buffer, sizeof(buffer), WOLFMEM_IO_POOL);
-    if (ret < 0) {
+    if ((ret - pad) < 0) {
         return -109;
     }
 
-    if ((ret % (WOLFMEM_IO_SZ + wolfSSL_MemoryPaddingSz())) != 0) {
+    if (((ret - pad) % (WOLFMEM_IO_SZ + wolfSSL_MemoryPaddingSz())) != 0) {
         return -110; /* not even chunks of memory for IO size */
     }
 
-    if ((ret % WOLFSSL_STATIC_ALIGN) != 0) {
+    if (((ret - pad) % WOLFSSL_STATIC_ALIGN) != 0) {
         return -111; /* memory not aligned */
     }
 
@@ -4787,6 +4812,7 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT ,DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -43;
     }
 
@@ -4796,6 +4822,7 @@ int rsa_test(void)
         ret = wc_RsaSetRNG(&key, &rng);
         if (ret < 0) {
             XFREE(tmp, HEAP_HINT ,DYNAMIC_TYPE_TMP_BUFFER);
+            wc_FreeRng(&rng);
             return -843;
         }
         ret = tmpret;
@@ -4813,11 +4840,13 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT ,DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -44;
     }
 
     if (XMEMCMP(plain, in, inLen)) {
         XFREE(tmp, HEAP_HINT ,DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -45;
     }
 
@@ -4831,6 +4860,7 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT ,DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -46;
     }
 
@@ -4846,11 +4876,13 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT ,DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -47;
     }
 
     if (XMEMCMP(plain, in, ret)) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -48;
     }
 
@@ -4860,7 +4892,7 @@ int rsa_test(void)
         !defined(HAVE_FIPS)
     #ifndef NO_SHA
     XMEMSET(plain, 0, sizeof(plain));
-    
+
     do {
 #if defined(WOLFSSL_ASYNC_CRYPT)
         ret = wc_RsaAsyncWait(ret, &key);
@@ -4872,6 +4904,7 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -143;
     }
 
@@ -4887,11 +4920,13 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -144;
     }
 
     if (XMEMCMP(plain, in, inLen)) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -145;
     }
     #endif /* NO_SHA */
@@ -4909,6 +4944,7 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -243;
     }
 
@@ -4924,11 +4960,13 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -244;
     }
 
     if (XMEMCMP(plain, in, inLen)) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -245;
     }
 
@@ -4945,6 +4983,7 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -246;
     }
 
@@ -4960,6 +4999,7 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret > 0) { /* in this case decrypt should fail */
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -247;
     }
     ret = 0;
@@ -4977,6 +5017,7 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -248;
     }
 
@@ -4992,11 +5033,13 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -249;
     }
 
     if (XMEMCMP(plain, in, inLen)) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -250;
     }
 
@@ -5014,6 +5057,7 @@ int rsa_test(void)
         } while (ret == WC_PENDING_E);
         if (ret < 0) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+            wc_FreeRng(&rng);
             return -251;
         }
 
@@ -5029,6 +5073,7 @@ int rsa_test(void)
         } while (ret == WC_PENDING_E);
         if (ret > 0) { /* should fail */
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+            wc_FreeRng(&rng);
             return -252;
         }
         ret = 0;
@@ -5053,6 +5098,7 @@ int rsa_test(void)
         } while (ret == WC_PENDING_E);
         if (ret < 0) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+            wc_FreeRng(&rng);
             return -343;
         }
 
@@ -5068,11 +5114,13 @@ int rsa_test(void)
         } while (ret == WC_PENDING_E);
         if (ret < 0) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+            wc_FreeRng(&rng);
             return -344;
         }
 
         if (XMEMCMP(plain, in, inLen)) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+            wc_FreeRng(&rng);
             return -345;
         }
     }
@@ -5091,6 +5139,7 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeRng(&rng);
         return -443;
     }
 
@@ -5106,11 +5155,13 @@ int rsa_test(void)
     } while (ret == WC_PENDING_E);
     if (ret < 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	wc_FreeRng(&rng);
         return -444;
     }
 
     if (XMEMCMP(plain, in, inLen)) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	wc_FreeRng(&rng);
         return -445;
     }
     #endif /* !HAVE_FAST_RSA && !HAVE_FIPS */
@@ -5130,6 +5181,7 @@ int rsa_test(void)
     file2 = fopen(clientCert, "rb");
     if (!file2) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	wc_FreeRng(&rng);
         return -49;
     }
 
@@ -5146,7 +5198,9 @@ int rsa_test(void)
 
     ret = ParseCert(&cert, CERT_TYPE, NO_VERIFY, 0);
     if (ret != 0) {
-        free(tmp);
+        FreeDecodedCert(&cert);
+        XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	wc_FreeRng(&rng);
         return -491;
     }
 
@@ -5169,6 +5223,7 @@ int rsa_test(void)
         err_sys("can't open ./certs/client-keyPub.der, "
                 "Please run from wolfSSL home dir", -40);
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	wc_FreeRng(&rng);
         return -50;
     }
 
@@ -5179,6 +5234,7 @@ int rsa_test(void)
     ret = wc_InitRsaKey(&keypub, HEAP_HINT);
     if (ret != 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	wc_FreeRng(&rng);
         return -51;
     }
     idx = 0;
@@ -5187,6 +5243,7 @@ int rsa_test(void)
     if (ret != 0) {
         XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
         wc_FreeRsaKey(&keypub);
+	wc_FreeRng(&rng);
         return -52;
     }
 #endif /* WOLFSSL_CERT_EXT */
@@ -5205,11 +5262,13 @@ int rsa_test(void)
         ret = wc_InitRsaKey(&genKey, HEAP_HINT);
         if (ret != 0) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -300;
         }
         ret = wc_MakeRsaKey(&genKey, 1024, 65537, &rng);
         if (ret != 0) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -301;
         }
 
@@ -5217,6 +5276,7 @@ int rsa_test(void)
         if (der == NULL) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -307;
         }
         pem = (byte*)XMALLOC(FOURK_BUF, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
@@ -5224,6 +5284,7 @@ int rsa_test(void)
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -308;
         }
 
@@ -5232,6 +5293,7 @@ int rsa_test(void)
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -302;
         }
 
@@ -5245,6 +5307,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -303;
         }
         ret = (int)fwrite(der, 1, derSz, keyFile);
@@ -5254,6 +5317,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -313;
         }
 
@@ -5263,6 +5327,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -304;
         }
 
@@ -5276,6 +5341,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -305;
         }
         ret = (int)fwrite(pem, 1, pemSz, pemFile);
@@ -5285,6 +5351,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -314;
         }
 
@@ -5294,6 +5361,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -3060;
         }
         idx = 0;
@@ -5304,6 +5372,7 @@ int rsa_test(void)
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&derIn);
             wc_FreeRsaKey(&genKey);
+	    wc_FreeRng(&rng);
             return -306;
         }
 
@@ -5332,12 +5401,14 @@ int rsa_test(void)
                                                        DYNAMIC_TYPE_TMP_BUFFER);
         if (derCert == NULL) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -309;
         }
         pem = (byte*)XMALLOC(FOURK_BUF, HEAP_HINT,DYNAMIC_TYPE_TMP_BUFFER);
         if (pem == NULL) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -310;
         }
 
@@ -5366,6 +5437,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -398;
         }
 
@@ -5374,7 +5446,8 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
-             return -399;
+	    wc_FreeRng(&rng);
+            return -399;
         }
 
         /* add Key Usage */
@@ -5382,6 +5455,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -400;
         }
 #endif /* WOLFSSL_CERT_EXT */
@@ -5391,6 +5465,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -401;
         }
 
@@ -5401,6 +5476,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -402;
         }
         FreeDecodedCert(&decode);
@@ -5415,6 +5491,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -403;
         }
         ret = (int)fwrite(derCert, 1, certSz, derFile);
@@ -5423,6 +5500,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -414;
         }
 
@@ -5431,6 +5509,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -404;
         }
 
@@ -5443,6 +5522,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -405;
         }
         ret = (int)fwrite(pem, 1, pemSz, pemFile);
@@ -5451,6 +5531,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -406;
         }
         XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
@@ -5477,12 +5558,14 @@ int rsa_test(void)
                                                        DYNAMIC_TYPE_TMP_BUFFER);
         if (derCert == NULL) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -311;
         }
         pem = (byte*)XMALLOC(FOURK_BUF, HEAP_HINT,DYNAMIC_TYPE_TMP_BUFFER);
         if (pem == NULL) {
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -312;
         }
 
@@ -5492,6 +5575,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -412;
         }
 
@@ -5503,6 +5587,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -411;
         }
         ret = wc_RsaPrivateKeyDecode(tmp, &idx3, &caKey, (word32)bytes3);
@@ -5511,6 +5596,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -413;
         }
 
@@ -5539,6 +5625,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -398;
         }
 
@@ -5547,6 +5634,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -399;
         }
 
@@ -5555,6 +5643,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -400;
         }
 #endif /* WOLFSSL_CERT_EXT */
@@ -5565,6 +5654,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -405;
         }
 
@@ -5574,6 +5664,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -407;
         }
 
@@ -5584,6 +5675,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -408;
         }
 
@@ -5595,6 +5687,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -409;
         }
         FreeDecodedCert(&decode);
@@ -5610,6 +5703,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -410;
         }
         ret = (int)fwrite(derCert, 1, certSz, derFile);
@@ -5619,6 +5713,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -416;
         }
 
@@ -5628,6 +5723,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -411;
         }
 
@@ -5641,6 +5737,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -412;
         }
         ret = (int)fwrite(pem, 1, pemSz, pemFile);
@@ -5650,6 +5747,7 @@ int rsa_test(void)
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             fclose(pemFile);
             wc_FreeRsaKey(&caKey);
+	    wc_FreeRng(&rng);
             return -415;
         }
         fclose(pemFile);
@@ -5682,12 +5780,14 @@ int rsa_test(void)
                                                        DYNAMIC_TYPE_TMP_BUFFER);
         if (derCert == NULL) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5311;
         }
         pem = (byte*)XMALLOC(FOURK_BUF, HEAP_HINT,DYNAMIC_TYPE_TMP_BUFFER);
         if (pem == NULL) {
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5312;
         }
 
@@ -5697,6 +5797,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5412;
         }
 
@@ -5709,6 +5810,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5413;
         }
 
@@ -5737,6 +5839,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5500;
         }
 
@@ -5748,6 +5851,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5501;
         }
 
@@ -5758,6 +5862,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKeyPub);
+	    wc_FreeRng(&rng);
             return -5502;
         }
 
@@ -5767,6 +5872,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKeyPub);
+	    wc_FreeRng(&rng);
             return -5503;
         }
 
@@ -5776,6 +5882,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKeyPub);
+	    wc_FreeRng(&rng);
             return -5504;
         }
         wc_ecc_free(&caKeyPub);
@@ -5785,6 +5892,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5505;
         }
 #endif /* WOLFSSL_CERT_EXT */
@@ -5795,6 +5903,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5405;
         }
 
@@ -5804,6 +5913,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5407;
         }
 
@@ -5814,6 +5924,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5408;
         }
 
@@ -5825,6 +5936,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
+	    wc_FreeRng(&rng);
             return -5409;
         }
         FreeDecodedCert(&decode);
@@ -5840,6 +5952,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5410;
         }
         ret = (int)fwrite(derCert, 1, certSz, derFile);
@@ -5849,6 +5962,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5414;
         }
 
@@ -5858,6 +5972,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5411;
         }
 
@@ -5871,6 +5986,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5412;
         }
         ret = (int)fwrite(pem, 1, pemSz, pemFile);
@@ -5879,6 +5995,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_ecc_free(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -5415;
         }
 
@@ -5908,12 +6025,14 @@ int rsa_test(void)
                                                        DYNAMIC_TYPE_TMP_BUFFER);
         if (derCert == NULL) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -311;
         }
         pem = (byte*)XMALLOC(FOURK_BUF, HEAP_HINT,DYNAMIC_TYPE_TMP_BUFFER);
         if (pem == NULL) {
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -312;
         }
 
@@ -5931,6 +6050,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -448;
         }
 
@@ -5941,6 +6061,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -449;
         }
 
@@ -5951,6 +6072,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -450;
         }
 
@@ -5960,6 +6082,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -451;
         }
 
@@ -5969,6 +6092,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -452;
         }
 
@@ -5980,6 +6104,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -453;
         }
         ret = wc_RsaPrivateKeyDecode(tmp, &idx3, &caKey, (word32)bytes);
@@ -5987,6 +6112,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -454;
         }
 
@@ -6009,6 +6135,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -496;
         }
 
@@ -6017,6 +6144,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -495;
         }
 
@@ -6026,6 +6154,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -494;
         }
 #endif /* WOLFSSL_CERT_EXT */
@@ -6036,6 +6165,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -455;
         }
 
@@ -6046,6 +6176,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             wc_FreeRsaKey(&caKey);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -456;
         }
 
@@ -6056,6 +6187,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -457;
         }
 
@@ -6067,6 +6199,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -458;
         }
         FreeDecodedCert(&decode);
@@ -6076,6 +6209,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -459;
         }
         ret = (int)fwrite(derCert, 1, certSz, derFile);
@@ -6084,6 +6218,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -473;
         }
 
@@ -6092,6 +6227,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -460;
         }
 
@@ -6100,6 +6236,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -461;
         }
         ret = (int)fwrite(pem, 1, pemSz, pemFile);
@@ -6108,6 +6245,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -474;
         }
 
@@ -6116,6 +6254,7 @@ int rsa_test(void)
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -462;
         }
         ret = (int)fwrite(private_key, 1, private_key_len, ntruPrivFile);
@@ -6124,6 +6263,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(derCert, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -475;
         }
         XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
@@ -6142,12 +6282,14 @@ int rsa_test(void)
         der = (byte*)XMALLOC(FOURK_BUF, HEAP_HINT,DYNAMIC_TYPE_TMP_BUFFER);
         if (der == NULL) {
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -463;
         }
         pem = (byte*)XMALLOC(FOURK_BUF, HEAP_HINT,DYNAMIC_TYPE_TMP_BUFFER);
         if (pem == NULL) {
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -464;
         }
 
@@ -6171,6 +6313,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -496;
         }
 
@@ -6180,6 +6323,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -494;
         }
 #endif /* WOLFSSL_CERT_EXT */
@@ -6189,6 +6333,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -465;
         }
 
@@ -6198,6 +6343,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -466;
         }
 
@@ -6206,6 +6352,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -467;
         }
 
@@ -6218,6 +6365,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -468;
         }
 
@@ -6227,6 +6375,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -471;
         }
 
@@ -6239,6 +6388,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -469;
         }
         ret = (int)fwrite(pem, 1, pemSz, reqFile);
@@ -6247,6 +6397,7 @@ int rsa_test(void)
             XFREE(pem, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(der, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
             XFREE(tmp, HEAP_HINT, DYNAMIC_TYPE_TMP_BUFFER);
+	    wc_FreeRng(&rng);
             return -470;
         }
 
@@ -6879,7 +7030,7 @@ int openssl_test(void)
 
 #ifndef NO_AES
 
-    {  /* evp_cipher test */
+    {  /* evp_cipher test: EVP_aes_128_cbc */
         EVP_CIPHER_CTX ctx;
 
 
@@ -6922,12 +7073,436 @@ int openssl_test(void)
             return -86;
 
 
+    }  /* end evp_cipher test: EVP_aes_128_cbc*/
+
+#ifdef HAVE_AES_ECB
+    {  /* evp_cipher test: EVP_aes_128_ecb*/
+        EVP_CIPHER_CTX ctx;
+        const byte msg[] =
+        {
+          0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,
+          0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a
+        };
+
+        const byte verify[] =
+        {
+            0xf3,0xee,0xd1,0xbd,0xb5,0xd2,0xa0,0x3c,
+            0x06,0x4b,0x5a,0x7e,0x3d,0xb1,0x81,0xf8
+        };
+
+        const byte key[] =
+        {
+          0x60,0x3d,0xeb,0x10,0x15,0xca,0x71,0xbe,
+          0x2b,0x73,0xae,0xf0,0x85,0x7d,0x77,0x81,
+          0x1f,0x35,0x2c,0x07,0x3b,0x61,0x08,0xd7,
+          0x2d,0x98,0x10,0xa3,0x09,0x14,0xdf,0xf4
+        };
+
+
+        byte cipher[AES_BLOCK_SIZE * 4];
+        byte plain [AES_BLOCK_SIZE * 4];
+
+        EVP_CIPHER_CTX_init(&ctx);
+        if (EVP_CipherInit(&ctx, EVP_aes_256_ecb(), (unsigned char*)key, NULL, 1) == 0)
+            return -181;
+
+        if (EVP_Cipher(&ctx, cipher, (byte*)msg, 16) == 0)
+            return -182;
+
+        if (XMEMCMP(cipher, verify, AES_BLOCK_SIZE))
+            return -183;
+
+        EVP_CIPHER_CTX_init(&ctx);
+        if (EVP_CipherInit(&ctx, EVP_aes_256_ecb(), (unsigned char*)key, NULL, 0) == 0)
+            return -184;
+
+        if (EVP_Cipher(&ctx, plain, cipher, 16) == 0)
+            return -185;
+
+        if (XMEMCMP(plain, msg, AES_BLOCK_SIZE))
+            return -186;
+
     }  /* end evp_cipher test */
+#endif
 
 #endif /* NO_AES */
 
+#define OPENSSL_TEST_ERROR (-10000)
+
+
+#ifndef NO_AES
+#ifdef WOLFSSL_AES_DIRECT
+  /* enable HAVE_AES_DECRYPT for AES_encrypt/decrypt */
+{
+
+  /* Test: AES_encrypt/decrypt/set Key */
+  AES_KEY enc;
+#ifdef HAVE_AES_DECRYPT
+  AES_KEY dec;
+#endif
+
+  const byte msg[] =
+  {
+      0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,
+      0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a
+  };
+
+  const byte verify[] =
+  {
+      0xf3,0xee,0xd1,0xbd,0xb5,0xd2,0xa0,0x3c,
+      0x06,0x4b,0x5a,0x7e,0x3d,0xb1,0x81,0xf8
+  };
+
+  const byte key[] =
+  {
+      0x60,0x3d,0xeb,0x10,0x15,0xca,0x71,0xbe,
+      0x2b,0x73,0xae,0xf0,0x85,0x7d,0x77,0x81,
+      0x1f,0x35,0x2c,0x07,0x3b,0x61,0x08,0xd7,
+      0x2d,0x98,0x10,0xa3,0x09,0x14,0xdf,0xf4
+  };
+
+  byte plain[sizeof(msg)];
+  byte cipher[sizeof(msg)];
+
+  printf("openSSL extra test\n") ;
+
+
+  AES_set_encrypt_key(key, sizeof(key)*8, &enc);
+  AES_set_decrypt_key(key,  sizeof(key)*8, &dec);
+
+  AES_encrypt(msg, cipher, &enc);
+
+#ifdef HAVE_AES_DECRYPT
+  AES_decrypt(cipher, plain, &dec);
+  if (XMEMCMP(plain, msg, AES_BLOCK_SIZE))
+      return OPENSSL_TEST_ERROR-60;
+#endif /* HAVE_AES_DECRYPT */
+
+  if (XMEMCMP(cipher, verify, AES_BLOCK_SIZE))
+      return OPENSSL_TEST_ERROR-61;
+}
+
+#endif
+
+/* EVP_Cipher with EVP_aes_xxx_ctr() */
+#ifdef WOLFSSL_AES_COUNTER
+{
+    const byte ctrKey[] =
+    {
+        0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,
+        0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c
+    };
+
+    const byte ctrIv[] =
+    {
+        0xf0,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,
+        0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xfe,0xff
+    };
+
+
+    const byte ctrPlain[] =
+    {
+        0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,
+        0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a,
+        0xae,0x2d,0x8a,0x57,0x1e,0x03,0xac,0x9c,
+        0x9e,0xb7,0x6f,0xac,0x45,0xaf,0x8e,0x51,
+        0x30,0xc8,0x1c,0x46,0xa3,0x5c,0xe4,0x11,
+        0xe5,0xfb,0xc1,0x19,0x1a,0x0a,0x52,0xef,
+        0xf6,0x9f,0x24,0x45,0xdf,0x4f,0x9b,0x17,
+        0xad,0x2b,0x41,0x7b,0xe6,0x6c,0x37,0x10
+    };
+
+    const byte ctrCipher[] =
+    {
+        0x87,0x4d,0x61,0x91,0xb6,0x20,0xe3,0x26,
+        0x1b,0xef,0x68,0x64,0x99,0x0d,0xb6,0xce,
+        0x98,0x06,0xf6,0x6b,0x79,0x70,0xfd,0xff,
+        0x86,0x17,0x18,0x7b,0xb9,0xff,0xfd,0xff,
+        0x5a,0xe4,0xdf,0x3e,0xdb,0xd5,0xd3,0x5e,
+        0x5b,0x4f,0x09,0x02,0x0d,0xb0,0x3e,0xab,
+        0x1e,0x03,0x1d,0xda,0x2f,0xbe,0x03,0xd1,
+        0x79,0x21,0x70,0xa0,0xf3,0x00,0x9c,0xee
+    };
+
+    byte plainBuff [64];
+    byte cipherBuff[64];
+
+    const byte oddCipher[] =
+    {
+        0xb9,0xd7,0xcb,0x08,0xb0,0xe1,0x7b,0xa0,
+        0xc2
+    };
+
+
+    /* test vector from "Recommendation for Block Cipher Modes of Operation"
+     * NIST Special Publication 800-38A */
+    const byte ctr192Key[] =
+    {
+        0x8e,0x73,0xb0,0xf7,0xda,0x0e,0x64,0x52,
+        0xc8,0x10,0xf3,0x2b,0x80,0x90,0x79,0xe5,
+        0x62,0xf8,0xea,0xd2,0x52,0x2c,0x6b,0x7b
+    };
+
+    const byte ctr192Iv[] =
+    {
+        0xf0,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,
+        0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xfe,0xff
+    };
+
+
+    const byte ctr192Plain[] =
+    {
+        0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,
+        0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a
+    };
+
+    const byte ctr192Cipher[] =
+    {
+        0x1a,0xbc,0x93,0x24,0x17,0x52,0x1c,0xa2,
+        0x4f,0x2b,0x04,0x59,0xfe,0x7e,0x6e,0x0b
+    };
+
+    /* test vector from "Recommendation for Block Cipher Modes of Operation"
+     * NIST Special Publication 800-38A */
+    const byte ctr256Key[] =
+    {
+        0x60,0x3d,0xeb,0x10,0x15,0xca,0x71,0xbe,
+        0x2b,0x73,0xae,0xf0,0x85,0x7d,0x77,0x81,
+        0x1f,0x35,0x2c,0x07,0x3b,0x61,0x08,0xd7,
+        0x2d,0x98,0x10,0xa3,0x09,0x14,0xdf,0xf4
+    };
+
+    const byte ctr256Iv[] =
+    {
+        0xf0,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,
+        0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xfe,0xff
+    };
+
+
+    const byte ctr256Plain[] =
+    {
+        0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,
+        0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a
+    };
+
+    const byte ctr256Cipher[] =
+    {
+        0x60,0x1e,0xc3,0x13,0x77,0x57,0x89,0xa5,
+        0xb7,0xa7,0xf5,0x04,0xbb,0xf3,0xd2,0x28
+    };
+
+    EVP_CIPHER_CTX en;
+    EVP_CIPHER_CTX de;
+    EVP_CIPHER_CTX *p_en;
+    EVP_CIPHER_CTX *p_de;
+
+    EVP_CIPHER_CTX_init(&en);
+    if (EVP_CipherInit(&en, EVP_aes_128_ctr(),
+            (unsigned char*)ctrKey, (unsigned char*)ctrIv, 0) == 0)
+        return -3300;
+    if (EVP_Cipher(&en, (byte*)cipherBuff, (byte*)ctrPlain, AES_BLOCK_SIZE*4) == 0)
+        return -3301;
+    EVP_CIPHER_CTX_init(&de);
+    if (EVP_CipherInit(&de, EVP_aes_128_ctr(),
+            (unsigned char*)ctrKey, (unsigned char*)ctrIv, 0) == 0)
+        return -3302;
+
+    if (EVP_Cipher(&de, (byte*)plainBuff, (byte*)cipherBuff, AES_BLOCK_SIZE*4) == 0)
+        return -3303;
+
+    if (XMEMCMP(cipherBuff, ctrCipher, AES_BLOCK_SIZE*4))
+        return -3304;
+    if (XMEMCMP(plainBuff, ctrPlain, AES_BLOCK_SIZE*4))
+        return -3305;
+
+    p_en = wolfSSL_EVP_CIPHER_CTX_new();
+    if(p_en == NULL)return -3390;
+    p_de = wolfSSL_EVP_CIPHER_CTX_new();
+    if(p_de == NULL)return -3391;
+
+    if (EVP_CipherInit(p_en, EVP_aes_128_ctr(),
+            (unsigned char*)ctrKey, (unsigned char*)ctrIv, 0) == 0)
+        return -3392;
+    if (EVP_Cipher(p_en, (byte*)cipherBuff, (byte*)ctrPlain, AES_BLOCK_SIZE*4) == 0)
+        return -3393;
+    if (EVP_CipherInit(p_de, EVP_aes_128_ctr(),
+            (unsigned char*)ctrKey, (unsigned char*)ctrIv, 0) == 0)
+        return -3394;
+
+    if (EVP_Cipher(p_de, (byte*)plainBuff, (byte*)cipherBuff, AES_BLOCK_SIZE*4) == 0)
+        return -3395;
+
+    wolfSSL_EVP_CIPHER_CTX_free(p_en);
+    wolfSSL_EVP_CIPHER_CTX_free(p_de);
+
+    if (XMEMCMP(cipherBuff, ctrCipher, AES_BLOCK_SIZE*4))
+        return -3396;
+    if (XMEMCMP(plainBuff, ctrPlain, AES_BLOCK_SIZE*4))
+        return -3397;
+
+    EVP_CIPHER_CTX_init(&en);
+    if (EVP_CipherInit(&en, EVP_aes_128_ctr(),
+        (unsigned char*)ctrKey, (unsigned char*)ctrIv, 0) == 0)
+        return -3306;
+    if (EVP_Cipher(&en, (byte*)cipherBuff, (byte*)ctrPlain, 9) == 0)
+        return -3307;
+
+    EVP_CIPHER_CTX_init(&de);
+    if (EVP_CipherInit(&de, EVP_aes_128_ctr(),
+        (unsigned char*)ctrKey, (unsigned char*)ctrIv, 0) == 0)
+        return -3308;
+
+    if (EVP_Cipher(&de, (byte*)plainBuff, (byte*)cipherBuff, 9) == 0)
+        return -3309;
+
+    if (XMEMCMP(plainBuff, ctrPlain, 9))
+        return -3310;
+    if (XMEMCMP(cipherBuff, ctrCipher, 9))
+        return -3311;
+
+    if (EVP_Cipher(&en, (byte*)cipherBuff, (byte*)ctrPlain, 9) == 0)
+        return -3312;
+    if (EVP_Cipher(&de, (byte*)plainBuff, (byte*)cipherBuff, 9) == 0)
+        return -3313;
+
+    if (XMEMCMP(plainBuff, ctrPlain, 9))
+        return -3314;
+    if (XMEMCMP(cipherBuff, oddCipher, 9))
+        return -3315;
+
+    EVP_CIPHER_CTX_init(&en);
+    if (EVP_CipherInit(&en, EVP_aes_192_ctr(),
+            (unsigned char*)ctr192Key, (unsigned char*)ctr192Iv, 0) == 0)
+        return -3316;
+    if (EVP_Cipher(&en, (byte*)cipherBuff, (byte*)ctr192Plain, AES_BLOCK_SIZE) == 0)
+        return -3317;
+    EVP_CIPHER_CTX_init(&de);
+    if (EVP_CipherInit(&de, EVP_aes_192_ctr(),
+        (unsigned char*)ctr192Key, (unsigned char*)ctr192Iv, 0) == 0)
+        return -3318;
+
+    XMEMSET(plainBuff, 0, sizeof(plainBuff));
+    if (EVP_Cipher(&de, (byte*)plainBuff, (byte*)cipherBuff, AES_BLOCK_SIZE) == 0)
+        return -3319;
+
+    if (XMEMCMP(plainBuff, ctr192Plain, sizeof(ctr192Plain)))
+        return -3320;
+    if (XMEMCMP(ctr192Cipher, cipherBuff, sizeof(ctr192Cipher)))
+        return -3321;
+
+    EVP_CIPHER_CTX_init(&en);
+    if (EVP_CipherInit(&en, EVP_aes_256_ctr(),
+        (unsigned char*)ctr256Key, (unsigned char*)ctr256Iv, 0) == 0)
+        return -3322;
+    if (EVP_Cipher(&en, (byte*)cipherBuff, (byte*)ctr256Plain, AES_BLOCK_SIZE) == 0)
+        return -3323;
+    EVP_CIPHER_CTX_init(&de);
+    if (EVP_CipherInit(&de, EVP_aes_256_ctr(),
+        (unsigned char*)ctr256Key, (unsigned char*)ctr256Iv, 0) == 0)
+        return -3324;
+
+    XMEMSET(plainBuff, 0, sizeof(plainBuff));
+    if (EVP_Cipher(&de, (byte*)plainBuff, (byte*)cipherBuff, AES_BLOCK_SIZE) == 0)
+        return -3325;
+
+    if (XMEMCMP(plainBuff, ctr256Plain, sizeof(ctr256Plain)))
+        return -3326;
+    if (XMEMCMP(ctr256Cipher, cipherBuff, sizeof(ctr256Cipher)))
+        return -3327;
+}
+#endif /* HAVE_AES_COUNTER */
+
+{
+      /* EVP_CipherUpdate test */
+
+
+        const byte cbcPlain[] =
+        {
+            0x6b,0xc1,0xbe,0xe2,0x2e,0x40,0x9f,0x96,
+            0xe9,0x3d,0x7e,0x11,0x73,0x93,0x17,0x2a,
+            0xae,0x2d,0x8a,0x57,0x1e,0x03,0xac,0x9c,
+            0x9e,0xb7,0x6f,0xac,0x45,0xaf,0x8e,0x51,
+            0x30,0xc8,0x1c,0x46,0xa3,0x5c,0xe4,0x11,
+            0xe5,0xfb,0xc1,0x19,0x1a,0x0a,0x52,0xef,
+            0xf6,0x9f,0x24,0x45,0xdf,0x4f,0x9b,0x17,
+            0xad,0x2b,0x41,0x7b,0xe6,0x6c,0x37,0x10
+        };
+
+        byte key[] = "0123456789abcdef   ";  /* align */
+        byte iv[]  = "1234567890abcdef   ";  /* align */
+
+        byte cipher[AES_BLOCK_SIZE * 4];
+        byte plain [AES_BLOCK_SIZE * 4];
+        EVP_CIPHER_CTX en;
+        EVP_CIPHER_CTX de;
+        int outlen ;
+        int total = 0;
+
+        EVP_CIPHER_CTX_init(&en);
+        if (EVP_CipherInit(&en, EVP_aes_128_cbc(),
+            (unsigned char*)key, (unsigned char*)iv, 1) == 0)
+            return -3401;
+        if (EVP_CipherUpdate(&en, (byte*)cipher, &outlen, (byte*)cbcPlain, 9) == 0)
+            return -3402;
+        if(outlen != 0)
+            return -3403;
+        total += outlen;
+
+        if (EVP_CipherUpdate(&en, (byte*)&cipher[total], &outlen, (byte*)&cbcPlain[9]  , 9) == 0)
+            return -3404;
+        if(outlen != 16)
+            return -3405;
+        total += outlen;
+
+        if (EVP_CipherFinal(&en, (byte*)&cipher[total], &outlen) == 0)
+            return -3406;
+        if(outlen != 16)
+            return -3407;
+        total += outlen;
+        if(total != 32)
+            return 3408;
+
+        total = 0;
+        EVP_CIPHER_CTX_init(&de);
+        if (EVP_CipherInit(&de, EVP_aes_128_cbc(),
+            (unsigned char*)key, (unsigned char*)iv, 0) == 0)
+            return -3420;
+
+        if (EVP_CipherUpdate(&de, (byte*)plain, &outlen, (byte*)cipher, 6) == 0)
+            return -3421;
+        if(outlen != 0)
+            return -3422;
+        total += outlen;
+
+        if (EVP_CipherUpdate(&de, (byte*)&plain[total], &outlen, (byte*)&cipher[6], 12) == 0)
+            return -3423;
+        if(outlen != 0)
+        total += outlen;
+
+        if (EVP_CipherUpdate(&de, (byte*)&plain[total], &outlen, (byte*)&cipher[6+12], 14) == 0)
+            return -3423;
+        if(outlen != 16)
+            return -3424;
+        total += outlen;
+
+        if (EVP_CipherFinal(&de, (byte*)&plain[total], &outlen) == 0)
+            return -3425;
+        if(outlen != 2)
+            return -3426;
+        total += outlen;
+
+        if(total != 18)
+            return 3427;
+
+        if (XMEMCMP(plain, cbcPlain, 18))
+            return -3428;
+
+    }
+#endif /* ifndef NO_AES */
+
     return 0;
 }
+
 
 #endif /* OPENSSL_EXTRA */
 
@@ -7094,6 +7669,7 @@ int pbkdf2_test(void)
         return -102;
 
     return 0;
+
 }
 
 
@@ -8838,7 +9414,7 @@ int ed25519_test(void)
 
 
 #if defined(WOLFSSL_CMAC) && !defined(NO_AES)
- 
+
 typedef struct CMAC_Test_Case {
     int type;
     int partial;
