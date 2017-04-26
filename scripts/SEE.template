@@ -74,7 +74,7 @@ fi
 
 mount_() {
     ( toolbox mount $* ||
-    toybox mount $* || busybox mount $* || return 1 ) 2>/dev/null
+    toybox mount $* || busybox mount $* || return 1 ) >/dev/null 2>&1
 }
 
 sysrw="mount_ -o rw,remount -t auto /system"
@@ -301,6 +301,11 @@ if [ ! -z `getprop ro.product.cpu.abilist64` ]
     then
     echo "64 bit arch detected --"
     BBX=busybox64
+fi
+
+# Temporary hack around for aarch64 segfaulting bb
+if [ "$ARCH" == "arm" -a "$BBX" == "busybox64" ]
+    then BBX=busybox
 fi
 
 if [ -z $SELSTAT ]
