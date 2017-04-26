@@ -74,7 +74,7 @@ fi
 
 mount_() {
     ( toolbox mount $* ||
-    toybox mount $* || busybox mount $* || return 1 ) 2>/dev/null
+    toybox mount $* || busybox mount $* || return 1 ) >/dev/null 2>&1
 }
 
 sysrw="mount_ -o rw,remount -t auto /system"
@@ -94,7 +94,7 @@ error() {
     fi
 }
 
-checkIfExists() {
+check_if_exists() {
     for i in $*
     do
         echo "Checking if $i exists --"
@@ -105,7 +105,7 @@ checkIfExists() {
     done
 }
 
-setPermissions() {
+set_permissions() {
     chmod $2 $1
     if ! chown $3:$4 $1 2>/dev/null
         then chown $3.$4 $1 2>/dev/null
@@ -115,7 +115,7 @@ setPermissions() {
     fi
 }
 
-showHelp() {
+show_help() {
     echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
     echo " "
     echo "Usage: sh $SCRIPTNAME [options]"
@@ -193,7 +193,12 @@ do
     case "$1" in
         -i|--interactive) INTERACTIVE=1
         ;;
-        -h|--help) showHelp
+        -h|--help) show_help
+            $sysro
+            exit 0
+        ;;
+        -v|--version) echo $VER
+            echo "Copyright 2017 Yash D. Saraf <YashdSaraf@XDA>"
             $sysro
             exit 0
         ;;
@@ -212,7 +217,7 @@ do
                 ;;
                 n|no) SELSTAT=0
                 ;;
-                *) showHelp "Invalid option specified => ${1#*=}"
+                *) show_help "Invalid option specified => ${1#*=}"
                     $sysro
                     exit 1
                 ;;
@@ -224,20 +229,20 @@ do
                 if ! [ -e $_dir ]
                     then mkdir $_dir
                     error "Error while creating $_dir"
-                    setPermissions $_dir 0755 0 0 u:object_r:system_file:s0
+                    set_permissions $_dir 0755 0 0 u:object_r:system_file:s0
                 elif ! [ -d $_dir -a -w $_dir ]
                     then
-                    showHelp "Directory not accessible => $_dir"
+                    show_help "Directory not accessible => $_dir"
                     $sysro
                     exit 1
                 else INSTALLDIR=$_dir
                 fi
-            else showHelp "Installation directory cannot be empty"
+            else show_help "Installation directory cannot be empty"
                 $sysro
                 exit 1
             fi
         ;;
-        *) showHelp "Invalid option specified => $1"
+        *) show_help "Invalid option specified => $1"
             $sysro
             exit 1
         ;;
@@ -267,11 +272,11 @@ echo "         -----by YashdSaraf@XDA-----            "
 echo "================================================"
 echo "  "
 
-checkIfExists dd rm mkdir mount chmod chown getprop
+check_if_exists dd rm mkdir mount chmod chown getprop
 if [ -e /sys/fs/selinux/enforce ]
     then
     SELINUXPRESENT=1
-    checkIfExists chcon
+    check_if_exists chcon
 fi
 
 echo "  "
@@ -281,7 +286,7 @@ echo "  "
 # Extract files embedded in this script
 echo "Extracting $DD --"
 dd if=$currentFile skip=$bytesToSkipDD bs=$blockSize count=$byteCountDD of=$DD 2>/dev/null
-setPermissions $DD 0555 0 2000 u:object_r:system_file:s0
+set_permissions $DD 0555 0 2000 u:object_r:system_file:s0
 DD=$BBTEMP/$DD
 $DD
 [ $? -eq 255 ]
@@ -289,18 +294,23 @@ error "Please make sure your device is of $ARCH or $ARCH64 architecture"
 
 echo "Extracting $DECOMPRESSOR --"
 $DD $currentFile $DECOMPRESSOR $bytesToSkip7z $byteCount7z
-setPermissions $DECOMPRESSOR 0555 0 2000 u:object_r:system_file:s0
+set_permissions $DECOMPRESSOR 0555 0 2000 u:object_r:system_file:s0
 DECOMPRESSOR=$BBTEMP/$DECOMPRESSOR
 
 echo "Extracting $BBFILE --"
 $DD $currentFile $BBFILE $bytesToSkipBB $byteCountBB
-setPermissions $BBFILE 0777 2000 2000 u:object_r:system_file:s0
+set_permissions $BBFILE 0777 2000 2000 u:object_r:system_file:s0
 BBFILE=$BBTEMP/$BBFILE
 
 if [ ! -z `getprop ro.product.cpu.abilist64` ]
     then
     echo "64 bit arch detected --"
     BBX=busybox64
+fi
+
+# Temporary hack around for aarch64 segfaulting bb
+if [ "$ARCH" == "arm" -a "$BBX" == "busybox64" ]
+    then BBX=busybox
 fi
 
 if [ -z $SELSTAT ]
@@ -335,7 +345,7 @@ fi
 echo "Extracting busybox --"
 $DECOMPRESSOR e $BBFILE $BBX -aoa >/dev/null
 error "Error while extracting busybox"
-setPermissions $BBX 0555 0 2000 u:object_r:system_file:s0
+set_permissions $BBX 0555 0 2000 u:object_r:system_file:s0
 BBX=$BBTEMP/$BBX
 
 POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin /system/vendor/xbin /vendor/xbin"
@@ -354,7 +364,7 @@ if [ $INSTALLDIR == "none" ]
         INSTALLDIR="/system/xbin"
         mkdir $INSTALLDIR
         error "No accessible directory found for installation"
-        setPermissions $INSTALLDIR 0755 0 0 u:object_r:system_file:s0
+        set_permissions $INSTALLDIR 0755 0 0 u:object_r:system_file:s0
     fi
 else USER_INSTALLDIR=$INSTALLDIR
 fi
@@ -440,9 +450,9 @@ if [ $ONLYCLEAN -ne 1 ]
     cd $INSTALLDIR
     $BBX cp $BBX busybox
     error "Error while installing busybox to $INSTALLDIR"
-    setPermissions busybox 0555 0 2000 u:object_r:system_file:s0
+    set_permissions busybox 0555 0 2000 u:object_r:system_file:s0
     $DECOMPRESSOR e $BBFILE ssl_helper -aoa >/dev/null
-    setPermissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
+    set_permissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
 
     echo "Setting up applets --"
     for i in $(./busybox --list)
@@ -459,7 +469,7 @@ if [ $ONLYCLEAN -ne 1 ]
             # Make wrapper scripts for applets if symlinking fails
             echo "#!$INSTALLDIR/busybox" > $i
             error "Error while setting up applets"
-            setPermissions $i 0555 0 2000 u:object_r:system_file:s0
+            set_permissions $i 0555 0 2000 u:object_r:system_file:s0
         fi
     done
 
@@ -467,7 +477,7 @@ if [ $ONLYCLEAN -ne 1 ]
         then
         echo "Adding OTA survival script --"
         $DECOMPRESSOR e $BBFILE 88-busybox.sh -aoa >/dev/null
-        setPermissions 88-busybox.sh 0755 0 0 u:object_r:system_file:s0
+        set_permissions 88-busybox.sh 0755 0 0 u:object_r:system_file:s0
         $BBX cp 88-busybox.sh /system/addon.d
     fi
 
