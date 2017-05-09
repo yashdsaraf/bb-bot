@@ -51,13 +51,13 @@ case "$1" in
                     for applet in `$file --list`
                     do
                         appletToInstall="${file%/*}/$applet"
-                        ln -sf $file $appletToInstall
+                        ln -s $file $appletToInstall
                         if ! [ -e $appletToInstall ]
                             then
                             echo "#!$file" > $appletToInstall
                             chmod 0755 $appletToInstall
                             ( chown 0.2000 $appletToInstall || chown 0:2000 $appletToInstall ) 2>/dev/null
-                            (( $SELINUXPRESENT )) && chcon u:object_r:system_file:s0 $appletToInstall
+                            [ ! -z $SELINUXPRESENT ] && chcon u:object_r:system_file:s0 $appletToInstall
                         fi
                     done
                 fi
