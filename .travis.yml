@@ -13,8 +13,8 @@ install: scripts/install-dependencies.sh
 script: scripts/readytorock.sh
 env:
   global:
-    - VER="1.26.2-YDS"
-    - STATUS="stable"
+    - VER="1.27.0-YDS"
+    - STATUS="unstable"
     - BUILD_TAG="v${VER}-$(TZ=UTC date +'%Y%m%d%H%M')"
     - TEMP_DIR=$(mktemp -d)
   matrix:
