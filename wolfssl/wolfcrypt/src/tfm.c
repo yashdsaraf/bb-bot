@@ -198,11 +198,7 @@ void s_fp_sub(fp_int *a, fp_int *b, fp_int *c)
 }
 
 /* c = a * b */
-#if defined(FREESCALE_LTC_TFM)
-void wolfcrypt_fp_mul(fp_int *A, fp_int *B, fp_int *C)
-#else
 void fp_mul(fp_int *A, fp_int *B, fp_int *C)
-#endif
 {
     int   y, yy, oldused;
 
@@ -742,11 +738,7 @@ void fp_div_2d(fp_int *a, int b, fp_int *c, fp_int *d)
 }
 
 /* c = a mod b, 0 <= c < b  */
-#if defined(FREESCALE_LTC_TFM)
-int wolfcrypt_fp_mod(fp_int *a, fp_int *b, fp_int *c)
-#else
 int fp_mod(fp_int *a, fp_int *b, fp_int *c)
-#endif
 {
    fp_int t;
    int    err;
@@ -897,11 +889,7 @@ top:
 }
 
 /* c = 1/a (mod b) for odd b only */
-#if defined(FREESCALE_LTC_TFM)
-int wolfcrypt_fp_invmod(fp_int *a, fp_int *b, fp_int *c)
-#else
 int fp_invmod(fp_int *a, fp_int *b, fp_int *c)
-#endif
 {
   fp_int  x, y, u, v, B, D;
   int     neg;
@@ -993,21 +981,20 @@ top:
 }
 
 /* d = a * b (mod c) */
-#if defined(FREESCALE_LTC_TFM)
-int wolfcrypt_fp_mulmod(fp_int *a, fp_int *b, fp_int *c, fp_int *d)
-#else
 int fp_mulmod(fp_int *a, fp_int *b, fp_int *c, fp_int *d)
-#endif
 {
   int err;
   fp_int t;
 
   fp_init(&t);
   fp_mul(a, b, &t);
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
   if (d->size < FP_SIZE) {
     err = fp_mod(&t, c, &t);
     fp_copy(&t, d);
-  } else {
+  } else
+#endif
+  {
     err = fp_mod(&t, c, d);
   }
 
@@ -1022,10 +1009,13 @@ int fp_submod(fp_int *a, fp_int *b, fp_int *c, fp_int *d)
 
   fp_init(&t);
   fp_sub(a, b, &t);
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
   if (d->size < FP_SIZE) {
     err = fp_mod(&t, c, &t);
     fp_copy(&t, d);
-  } else {
+  } else
+#endif
+  {
     err = fp_mod(&t, c, d);
   }
 
@@ -1040,10 +1030,13 @@ int fp_addmod(fp_int *a, fp_int *b, fp_int *c, fp_int *d)
 
   fp_init(&t);
   fp_add(a, b, &t);
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
   if (d->size < FP_SIZE) {
     err = fp_mod(&t, c, &t);
     fp_copy(&t, d);
-  } else {
+  } else
+#endif
+  {
     err = fp_mod(&t, c, d);
   }
 
@@ -1076,11 +1069,7 @@ const wolfssl_word wc_off_on_addr[2] =
    Based on work by Marc Joye, Sung-Ming Yen, "The Montgomery Powering Ladder",
    Cryptographic Hardware and Embedded Systems, CHES 2002
 */
-#if defined(FREESCALE_LTC_TFM)
-int _wolfcrypt_fp_exptmod(fp_int * G, fp_int * X, fp_int * P, fp_int * Y)
-#else
 static int _fp_exptmod(fp_int * G, fp_int * X, fp_int * P, fp_int * Y)
-#endif
 {
 #ifdef WC_NO_CACHE_RESISTANT
   fp_int   R[2];
@@ -1983,6 +1972,41 @@ void fp_set(fp_int *a, fp_digit b)
    a->used  = a->dp[0] ? 1 : 0;
 }
 
+
+#ifndef MP_SET_CHUNK_BITS
+    #define MP_SET_CHUNK_BITS 4
+#endif
+void fp_set_int(fp_int *a, unsigned long b)
+{
+  int x;
+
+  /* use direct fp_set if b is less than fp_digit max */
+  if (b < FP_DIGIT_MAX) {
+    fp_set (a, b);
+    return;
+  }
+
+  fp_zero (a);
+
+  /* set chunk bits at a time */
+  for (x = 0; x < (int)(sizeof(b) * 8) / MP_SET_CHUNK_BITS; x++) {
+    fp_mul_2d (a, MP_SET_CHUNK_BITS, a);
+
+    /* OR in the top bits of the source */
+    a->dp[0] |= (b >> ((sizeof(b) * 8) - MP_SET_CHUNK_BITS)) &
+                                  ((1 << MP_SET_CHUNK_BITS) - 1);
+
+    /* shift the source up to the next chunk bits */
+    b <<= MP_SET_CHUNK_BITS;
+
+    /* ensure that digits are not clamped off */
+    a->used += 1;
+  }
+
+  /* clamp digits */
+  fp_clamp(a);
+}
+
 /* check if a bit is set */
 int fp_is_bit_set (fp_int *a, fp_digit b)
 {
@@ -2063,26 +2087,26 @@ int fp_leading_bit(fp_int *a)
 
 void fp_lshd(fp_int *a, int x)
 {
-   int y;
+    int y;
 
-   /* move up and truncate as required */
-   y = MIN(a->used + x - 1, (int)(FP_SIZE-1));
+    /* move up and truncate as required */
+    y = MIN(a->used + x - 1, (int)(FP_SIZE-1));
 
-   /* store new size */
-   a->used = y + 1;
+    /* store new size */
+    a->used = y + 1;
 
-   /* move digits */
-   for (; y >= x; y--) {
-       a->dp[y] = a->dp[y-x];
-   }
+    /* move digits */
+    for (; y >= x; y--) {
+        a->dp[y] = a->dp[y-x];
+    }
 
-   /* zero lower digits */
-   for (; y >= 0; y--) {
-       a->dp[y] = 0;
-   }
+    /* zero lower digits */
+    for (; y >= 0; y--) {
+        a->dp[y] = 0;
+    }
 
-   /* clamp digits */
-   fp_clamp(a);
+    /* clamp digits */
+    fp_clamp(a);
 }
 
 
@@ -2115,6 +2139,9 @@ void fp_rshb(fp_int *c, int x)
       /* set the carry to the carry bits of the current word found above */
       r = rr;
     }
+
+    /* clamp digits */
+    fp_clamp(c);
 }
 
 
@@ -2167,10 +2194,13 @@ void fp_sub_d(fp_int *a, fp_digit b, fp_int *c)
    fp_int tmp;
    fp_init(&tmp);
    fp_set(&tmp, b);
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
    if (c->size < FP_SIZE) {
      fp_sub(a, &tmp, &tmp);
      fp_copy(&tmp, c);
-   } else {
+   } else
+#endif
+   {
      fp_sub(a, &tmp, c);
    }
 }
@@ -2188,29 +2218,79 @@ int mp_init (mp_int * a)
 
 void fp_init(fp_int *a)
 {
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
     a->size = FP_SIZE;
+#endif
+#ifdef HAVE_WOLF_BIGINT
+    wc_bigint_init(&a->raw);
+#endif
     fp_zero(a);
 }
 
 void fp_zero(fp_int *a)
 {
+    int size = FP_SIZE;
     a->used = 0;
     a->sign = FP_ZPOS;
-    XMEMSET(a->dp, 0, a->size * sizeof(fp_digit));
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
+    size = a->size;
+#endif
+    XMEMSET(a->dp, 0, size * sizeof(fp_digit));
 }
 
 void fp_clear(fp_int *a)
 {
+    int size = FP_SIZE;
     a->used = 0;
     a->sign = FP_ZPOS;
-    ForceZero(a->dp, a->size * sizeof(fp_digit));
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
+    size = a->size;
+#endif
+    XMEMSET(a->dp, 0, size * sizeof(fp_digit));
+    fp_free(a);
+}
+
+void fp_forcezero (mp_int * a)
+{
+    int size = FP_SIZE;
+    a->used = 0;
+    a->sign = FP_ZPOS;
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
+    size = a->size;
+#endif
+    ForceZero(a->dp, size * sizeof(fp_digit));
+#ifdef HAVE_WOLF_BIGINT
+    wc_bigint_zero(&a->raw);
+#endif
+    fp_free(a);
+}
+
+void mp_forcezero (mp_int * a)
+{
+    fp_forcezero(a);
+}
+
+void fp_free(fp_int* a)
+{
+#ifdef HAVE_WOLF_BIGINT
+    wc_bigint_free(&a->raw);
+#else
+    (void)a;
+#endif
 }
 
 
 /* clear one (frees)  */
 void mp_clear (mp_int * a)
 {
-    fp_zero(a);
+    if (a == NULL)
+        return;
+    fp_clear(a);
+}
+
+void mp_free(mp_int* a)
+{
+    fp_free(a);
 }
 
 /* handle up to 6 inits */
@@ -2248,14 +2328,28 @@ int mp_sub (mp_int * a, mp_int * b, mp_int * c)
 }
 
 /* high level multiplication (handles sign) */
+#if defined(FREESCALE_LTC_TFM)
+int wolfcrypt_mp_mul(mp_int * a, mp_int * b, mp_int * c)
+#else
 int mp_mul (mp_int * a, mp_int * b, mp_int * c)
+#endif
 {
   fp_mul(a, b, c);
   return MP_OKAY;
 }
 
+int mp_mul_d (mp_int * a, mp_digit b, mp_int * c)
+{
+  fp_mul_d(a, b, c);
+  return MP_OKAY;
+}
+
 /* d = a * b (mod c) */
+#if defined(FREESCALE_LTC_TFM)
+int wolfcrypt_mp_mulmod (mp_int * a, mp_int * b, mp_int * c, mp_int * d)
+#else
 int mp_mulmod (mp_int * a, mp_int * b, mp_int * c, mp_int * d)
+#endif
 {
   return fp_mulmod(a, b, c, d);
 }
@@ -2273,13 +2367,21 @@ int mp_addmod(mp_int *a, mp_int *b, mp_int *c, mp_int *d)
 }
 
 /* c = a mod b, 0 <= c < b */
+#if defined(FREESCALE_LTC_TFM)
+int wolfcrypt_mp_mod (mp_int * a, mp_int * b, mp_int * c)
+#else
 int mp_mod (mp_int * a, mp_int * b, mp_int * c)
+#endif
 {
   return fp_mod (a, b, c);
 }
 
 /* hac 14.61, pp608 */
+#if defined(FREESCALE_LTC_TFM)
+int wolfcrypt_mp_invmod (mp_int * a, mp_int * b, mp_int * c)
+#else
 int mp_invmod (mp_int * a, mp_int * b, mp_int * c)
+#endif
 {
   return fp_invmod(a, b, c);
 }
@@ -2289,7 +2391,11 @@ int mp_invmod (mp_int * a, mp_int * b, mp_int * c)
  * embedded in the normal function but that wasted alot of stack space
  * for nothing (since 99% of the time the Montgomery code would be called)
  */
+#if defined(FREESCALE_LTC_TFM)
+int wolfcrypt_mp_exptmod (mp_int * G, mp_int * X, mp_int * P, mp_int * Y)
+#else
 int mp_exptmod (mp_int * G, mp_int * X, mp_int * P, mp_int * Y)
+#endif
 {
   return fp_exptmod(G, X, P, Y);
 }
@@ -2310,6 +2416,11 @@ int mp_cmp_d(mp_int * a, mp_digit b)
 int mp_unsigned_bin_size (mp_int * a)
 {
   return fp_unsigned_bin_size(a);
+}
+
+int mp_to_unsigned_bin_at_pos(int x, fp_int *t, unsigned char *b)
+{
+    return fp_to_unsigned_bin_at_pos(x, t, b);
 }
 
 /* store in unsigned [big endian] format */
@@ -2339,6 +2450,11 @@ int mp_mul_2d(fp_int *a, int b, fp_int *c)
 	return MP_OKAY;
 }
 
+int mp_div(fp_int * a, fp_int * b, fp_int * c, fp_int * d)
+{
+    return fp_div(a, b, c, d);
+}
+
 int mp_div_2d(fp_int* a, int b, fp_int* c, fp_int* d)
 {
     fp_div_2d(a, b, c, d);
@@ -2349,7 +2465,7 @@ void fp_copy(fp_int *a, fp_int *b)
 {
     /* if source and destination are different */
     if (a != b) {
-#ifdef ALT_ECC_SIZE
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
         /* verify a will fit in b */
         if (b->size >= a->used) {
             int x, oldused;
@@ -2416,9 +2532,14 @@ void mp_rshb (mp_int* a, int x)
     fp_rshb(a, x);
 }
 
-int mp_set_int(mp_int *a, mp_digit b)
+void mp_rshd (mp_int* a, int x)
 {
-    fp_set(a, b);
+    fp_rshd(a, x);
+}
+
+int mp_set_int(mp_int *a, unsigned long b)
+{
+    fp_set_int(a, b);
     return MP_OKAY;
 }
 
@@ -2443,11 +2564,14 @@ int fp_sqrmod(fp_int *a, fp_int *b, fp_int *c)
   fp_init(&t);
   fp_sqr(a, &t);
 
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
   if (c->size < FP_SIZE) {
     err = fp_mod(&t, b, &t);
     fp_copy(&t, c);
   }
-  else {
+  else
+#endif
+  {
     err = fp_mod(&t, b, c);
   }
 
@@ -2657,10 +2781,8 @@ int mp_rand_prime(mp_int* N, int len, WC_RNG* rng, void* heap)
     switch(err) {
         case FP_VAL:
             return MP_VAL;
-            break;
         case FP_MEM:
             return MP_MEM;
-            break;
         default:
             break;
     }
@@ -3021,12 +3143,6 @@ int mp_read_radix(mp_int *a, const char *str, int radix)
 }
 
 /* fast math conversion */
-void mp_set(fp_int *a, fp_digit b)
-{
-    fp_set(a,b);
-}
-
-/* fast math conversion */
 int mp_sqr(fp_int *A, fp_int *B)
 {
     fp_sqr(A, B);
@@ -3070,6 +3186,15 @@ int mp_cnt_lsb(fp_int* a)
 #endif /* HAVE_COMP_KEY */
 
 #endif /* HAVE_ECC */
+
+#if defined(HAVE_ECC) || !defined(NO_RSA) || !defined(NO_DSA)
+/* fast math conversion */
+int mp_set(fp_int *a, fp_digit b)
+{
+    fp_set(a,b);
+    return MP_OKAY;
+}
+#endif
 
 #if defined(WOLFSSL_KEY_GEN) || defined(HAVE_COMP_KEY) || \
     defined(WOLFSSL_DEBUG_MATH)
@@ -3184,9 +3309,14 @@ int mp_toradix (mp_int *a, char *str, int radix)
 void mp_dump(const char* desc, mp_int* a, byte verbose)
 {
   char buffer[FP_SIZE * sizeof(fp_digit) * 2];
+  int size = FP_SIZE;
+
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
+  size = a->size;
+#endif
 
   printf("%s: ptr=%p, used=%d, sign=%d, size=%d, fpd=%d\n",
-    desc, a, a->used, a->sign, a->size, (int)sizeof(fp_digit));
+    desc, a, a->used, a->sign, size, (int)sizeof(fp_digit));
 
   mp_toradix(a, buffer, 16);
   printf("  %s\n  ", buffer);

@@ -527,15 +527,19 @@ static int wc_PKCS12_verify(WC_PKCS12* pkcs12, byte* data, word32 dataSz,
     }
 
     /* now that key has been created use it to get HMAC hash on data */
-    if ((ret = wc_HmacSetKey(&hmac, typeH, key, kLen)) != 0) {
+    if ((ret = wc_HmacInit(&hmac, NULL, INVALID_DEVID)) != 0) {
         return ret;
     }
-    if ((ret = wc_HmacUpdate(&hmac, data, dataSz)) != 0) {
+    ret = wc_HmacSetKey(&hmac, typeH, key, kLen);
+    if (ret == 0)
+        ret = wc_HmacUpdate(&hmac, data, dataSz);
+    if (ret == 0)
+        ret = wc_HmacFinal(&hmac, digest);
+    wc_HmacFree(&hmac);
+
+    if (ret != 0)
         return ret;
-    }
-    if ((ret = wc_HmacFinal(&hmac, digest)) != 0) {
-        return ret;
-    }
+
 #ifdef WOLFSSL_DEBUG_PKCS12
     {
         byte* p;
@@ -709,6 +713,10 @@ int wc_PKCS12_parse(WC_PKCS12* pkcs12, const char* psw,
         }
     }
 
+    if (pkcs12->safe == NULL) {
+        WOLFSSL_MSG("No PKCS12 safes to parse");
+        return BAD_FUNC_ARG;
+    }
 
     /* Decode content infos */
     ci = pkcs12->safe->CI;
