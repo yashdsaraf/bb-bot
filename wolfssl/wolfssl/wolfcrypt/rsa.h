@@ -55,6 +55,9 @@
 
 #ifdef WOLFSSL_ASYNC_CRYPT
     #include <wolfssl/wolfcrypt/async.h>
+    #ifdef WOLFSSL_CERT_GEN
+        #include <wolfssl/wolfcrypt/asn.h>
+    #endif
 #endif
 
 enum {
@@ -78,21 +81,30 @@ enum {
 
 
 /* RSA */
-typedef struct RsaKey {
+struct RsaKey {
     mp_int n, e, d, p, q, dP, dQ, u;
-    int   type;                               /* public or private */
     void* heap;                               /* for user memory overrides */
+    byte* data;                               /* temp buffer for async RSA */
+    int   type;                               /* public or private */
     int   state;
-    byte*  tmp;                               /* temp buffer for async RSA */
-    word32 tmpLen;
-    byte   tmpIsAlloc;
+    word32 dataLen;
 #ifdef WC_RSA_BLINDING
     WC_RNG* rng;                              /* for PrivateDecrypt blinding */
 #endif
 #ifdef WOLFSSL_ASYNC_CRYPT
-    AsyncCryptDev asyncDev;
+    WC_ASYNC_DEV asyncDev;
+    #ifdef WOLFSSL_CERT_GEN
+        CertSignCtx certSignCtx; /* context info for cert sign (MakeSignature) */
+    #endif
 #endif /* WOLFSSL_ASYNC_CRYPT */
-} RsaKey;
+    byte   dataIsAlloc;
+};
+
+#ifndef WC_RSAKEY_TYPE_DEFINED
+    typedef struct RsaKey RsaKey;
+    #define WC_RSAKEY_TYPE_DEFINED
+#endif
+
 #endif /*HAVE_FIPS */
 
 WOLFSSL_API int  wc_InitRsaKey(RsaKey* key, void* heap);
@@ -161,11 +173,6 @@ WOLFSSL_API int  wc_RsaFlattenPublicKey(RsaKey*, byte*, word32*, byte*,
 #ifdef WOLFSSL_KEY_GEN
     WOLFSSL_API int wc_RsaKeyToPublicDer(RsaKey*, byte* output, word32 inLen);
     WOLFSSL_API int wc_MakeRsaKey(RsaKey* key, int size, long e, WC_RNG* rng);
-#endif
-
-#ifdef WOLFSSL_ASYNC_CRYPT
-    WOLFSSL_API int  wc_RsaAsyncHandle(RsaKey* key, WOLF_EVENT_QUEUE* queue, WOLF_EVENT* event);
-    WOLFSSL_API int  wc_RsaAsyncWait(int ret, RsaKey* key);
 #endif
 
 #endif /* HAVE_USER_RSA */

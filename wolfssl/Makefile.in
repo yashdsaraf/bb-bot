@@ -67,6 +67,14 @@
 #
 
 # vim:ft=automake
+# All paths should be given relative to the root
+#
+
+# vim:ft=automake
+# All paths should be given relative to the root
+#
+
+# vim:ft=automake
 # included from Top Level Makefile.am
 # All paths should be given relative to the root
 
@@ -94,22 +102,6 @@
 # All paths should be given relative to the root
 
 # vim:ft=automake
-# All paths should be given relative to the root
-
-# vim:ft=automake
-# included from Top Level Makefile.am
-# All paths should be given relative to the root
-
-# vim:ft=automake
-# included from Top Level Makefile.am
-# All paths should be given relative to the root
-
-# vim:ft=automake
-# included from Top Level Makefile.am
-# All paths should be given relative to the root
-
-# vim:ft=automake
-# included from Top Level Makefile.am
 # All paths should be given relative to the root
 
 # vim:ft=automake
@@ -125,6 +117,22 @@
 # All paths should be given relative to the root
 
 # vim:ft=automake
+# included from Top Level Makefile.am
+# All paths should be given relative to the root
+
+# vim:ft=automake
+# included from Top Level Makefile.am
+# All paths should be given relative to the root
+
+# vim:ft=automake
+# included from Top Level Makefile.am
+# All paths should be given relative to the root
+
+# vim:ft=automake
+# included from Top Level Makefile.am
+# All paths should be given relative to the root
+
+# vim:ft=automake
 
 # vim:ft=automake
 # All paths should be given relative to the root
@@ -181,6 +189,10 @@
 # vim:ft=automake
 # All paths should be given relative to the root
 #
+
+# vim:ft=automake
+# included from Top Level Makefile.am
+# All paths should be given relative to the root
 
 # vim:ft=automake
 # included from Top Level Makefile.am
@@ -306,127 +318,134 @@ check_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3)
 # It depends on the architecture and conflicts with Multi-Arch.
 @BUILD_DISTRO_TRUE@am__append_1 = cyassl/options.h
 @BUILD_DISTRO_FALSE@am__append_2 = cyassl/options.h
-@BUILD_CAVIUM_TRUE@am__append_3 = wolfssl/wolfcrypt/port/cavium/cavium_nitrox.h
+@BUILD_ASYNCCRYPT_TRUE@am__append_3 = wolfssl/wolfcrypt/async.h
+@BUILD_CAVIUM_TRUE@am__append_4 = wolfssl/wolfcrypt/port/cavium/cavium_nitrox.h
+@BUILD_INTEL_QA_TRUE@am__append_5 = wolfssl/wolfcrypt/port/intel/quickassist.h \
+@BUILD_INTEL_QA_TRUE@	wolfssl/wolfcrypt/port/intel/quickassist_mem.h
 
 # For distro build don't install options.h.
 # It depends on the architecture and conflicts with Multi-Arch.
-@BUILD_DISTRO_TRUE@am__append_4 = wolfssl/options.h
-@BUILD_DISTRO_FALSE@am__append_5 = wolfssl/options.h
+@BUILD_DISTRO_TRUE@am__append_6 = wolfssl/options.h
+@BUILD_DISTRO_FALSE@am__append_7 = wolfssl/options.h
 
 # install the packaged IPP libraries
 
 # Link needed IPP libraries
-@BUILD_FAST_RSA_TRUE@am__append_6 = IPP_links
-@BUILD_FAST_RSA_TRUE@am__append_7 = $(IPPHEADERS) \
+@BUILD_FAST_RSA_TRUE@am__append_8 = IPP_links
+@BUILD_FAST_RSA_TRUE@am__append_9 = $(IPPHEADERS) \
 @BUILD_FAST_RSA_TRUE@	wolfcrypt/user-crypto/include/user_rsa.h
 
 # fips first  file
-@BUILD_FIPS_TRUE@am__append_8 = ctaocrypt/src/wolfcrypt_first.c \
+@BUILD_FIPS_TRUE@am__append_10 = ctaocrypt/src/wolfcrypt_first.c \
 @BUILD_FIPS_TRUE@	ctaocrypt/src/hmac.c ctaocrypt/src/random.c \
 @BUILD_FIPS_TRUE@	ctaocrypt/src/sha256.c
-@BUILD_FIPS_TRUE@@BUILD_RSA_TRUE@am__append_9 = ctaocrypt/src/rsa.c
-@BUILD_AES_TRUE@@BUILD_FIPS_TRUE@am__append_10 = ctaocrypt/src/aes.c
-@BUILD_DES3_TRUE@@BUILD_FIPS_TRUE@am__append_11 = ctaocrypt/src/des3.c
-@BUILD_FIPS_TRUE@@BUILD_SHA_TRUE@am__append_12 = ctaocrypt/src/sha.c
-@BUILD_FIPS_TRUE@@BUILD_SHA512_TRUE@am__append_13 = ctaocrypt/src/sha512.c
+@BUILD_FIPS_TRUE@@BUILD_RSA_TRUE@am__append_11 = ctaocrypt/src/rsa.c
+@BUILD_AES_TRUE@@BUILD_FIPS_TRUE@am__append_12 = ctaocrypt/src/aes.c
+@BUILD_DES3_TRUE@@BUILD_FIPS_TRUE@am__append_13 = ctaocrypt/src/des3.c
+@BUILD_FIPS_TRUE@@BUILD_SHA_TRUE@am__append_14 = ctaocrypt/src/sha.c
+@BUILD_FIPS_TRUE@@BUILD_SHA512_TRUE@am__append_15 = ctaocrypt/src/sha512.c
 
 # fips last file
-@BUILD_FIPS_TRUE@am__append_14 = ctaocrypt/src/fips.c \
+@BUILD_FIPS_TRUE@am__append_16 = ctaocrypt/src/fips.c \
 @BUILD_FIPS_TRUE@	ctaocrypt/src/fips_test.c \
 @BUILD_FIPS_TRUE@	ctaocrypt/src/wolfcrypt_last.c
-@BUILD_RNG_TRUE@am__append_15 = wolfcrypt/src/random.c
-@BUILD_ARMASM_TRUE@am__append_16 = wolfcrypt/src/port/arm/armv8-sha256.c
-@BUILD_ARMASM_FALSE@am__append_17 = wolfcrypt/src/sha256.c
-@BUILD_WOLFEVENT_TRUE@am__append_18 = wolfcrypt/src/wolfevent.c
-@BUILD_ASYNCCRYPT_TRUE@am__append_19 = wolfcrypt/src/async.c
-@BUILD_FAST_RSA_TRUE@@BUILD_RSA_TRUE@@BUILD_USER_RSA_FALSE@am__append_20 = wolfcrypt/user-crypto/src/rsa.c
-@BUILD_FAST_RSA_FALSE@@BUILD_RSA_TRUE@@BUILD_USER_RSA_FALSE@am__append_21 = wolfcrypt/src/rsa.c
-@BUILD_AES_TRUE@@BUILD_ARMASM_TRUE@am__append_22 = wolfcrypt/src/port/arm/armv8-aes.c
-@BUILD_AES_TRUE@@BUILD_ARMASM_FALSE@am__append_23 = wolfcrypt/src/aes.c
-@BUILD_CMAC_TRUE@am__append_24 = wolfcrypt/src/cmac.c
-@BUILD_DES3_TRUE@am__append_25 = wolfcrypt/src/des3.c
-@BUILD_SHA_TRUE@am__append_26 = wolfcrypt/src/sha.c
-@BUILD_SHA512_TRUE@am__append_27 = wolfcrypt/src/sha512.c
-@BUILD_MEMORY_TRUE@am__append_28 = wolfcrypt/src/memory.c
-@BUILD_DH_TRUE@am__append_29 = wolfcrypt/src/dh.c
-@BUILD_ASN_TRUE@am__append_30 = wolfcrypt/src/asn.c
-@BUILD_CODING_TRUE@am__append_31 = wolfcrypt/src/coding.c
-@BUILD_POLY1305_TRUE@am__append_32 = wolfcrypt/src/poly1305.c
-@BUILD_RC4_TRUE@am__append_33 = wolfcrypt/src/arc4.c
-@BUILD_MD4_TRUE@am__append_34 = wolfcrypt/src/md4.c
-@BUILD_MD5_TRUE@am__append_35 = wolfcrypt/src/md5.c
-@BUILD_PWDBASED_TRUE@am__append_36 = wolfcrypt/src/pwdbased.c \
+@BUILD_RNG_TRUE@am__append_17 = wolfcrypt/src/random.c
+@BUILD_ARMASM_TRUE@am__append_18 = wolfcrypt/src/port/arm/armv8-sha256.c
+@BUILD_ARMASM_FALSE@am__append_19 = wolfcrypt/src/sha256.c
+@BUILD_WOLFEVENT_TRUE@am__append_20 = wolfcrypt/src/wolfevent.c
+@BUILD_ASYNCCRYPT_TRUE@am__append_21 = wolfcrypt/src/async.c
+@BUILD_FAST_RSA_TRUE@@BUILD_RSA_TRUE@@BUILD_USER_RSA_FALSE@am__append_22 = wolfcrypt/user-crypto/src/rsa.c
+@BUILD_FAST_RSA_FALSE@@BUILD_RSA_TRUE@@BUILD_USER_RSA_FALSE@am__append_23 = wolfcrypt/src/rsa.c
+@BUILD_AES_TRUE@@BUILD_ARMASM_TRUE@am__append_24 = wolfcrypt/src/port/arm/armv8-aes.c
+@BUILD_AES_TRUE@@BUILD_ARMASM_FALSE@am__append_25 = wolfcrypt/src/aes.c
+@BUILD_CMAC_TRUE@am__append_26 = wolfcrypt/src/cmac.c
+@BUILD_DES3_TRUE@am__append_27 = wolfcrypt/src/des3.c
+@BUILD_SHA_TRUE@am__append_28 = wolfcrypt/src/sha.c
+@BUILD_SHA512_TRUE@am__append_29 = wolfcrypt/src/sha512.c
+@BUILD_MEMORY_TRUE@am__append_30 = wolfcrypt/src/memory.c
+@BUILD_DH_TRUE@am__append_31 = wolfcrypt/src/dh.c
+@BUILD_ASN_TRUE@am__append_32 = wolfcrypt/src/asn.c
+@BUILD_CODING_TRUE@am__append_33 = wolfcrypt/src/coding.c
+@BUILD_POLY1305_TRUE@am__append_34 = wolfcrypt/src/poly1305.c
+@BUILD_RC4_TRUE@am__append_35 = wolfcrypt/src/arc4.c
+@BUILD_MD4_TRUE@am__append_36 = wolfcrypt/src/md4.c
+@BUILD_MD5_TRUE@am__append_37 = wolfcrypt/src/md5.c
+@BUILD_PWDBASED_TRUE@am__append_38 = wolfcrypt/src/pwdbased.c \
 @BUILD_PWDBASED_TRUE@	wolfcrypt/src/pkcs12.c
-@BUILD_DSA_TRUE@am__append_37 = wolfcrypt/src/dsa.c
-@BUILD_AESNI_TRUE@am__append_38 = wolfcrypt/src/aes_asm.s
-@BUILD_CAMELLIA_TRUE@am__append_39 = wolfcrypt/src/camellia.c
-@BUILD_MD2_TRUE@am__append_40 = wolfcrypt/src/md2.c
-@BUILD_RIPEMD_TRUE@am__append_41 = wolfcrypt/src/ripemd.c
-@BUILD_BLAKE2_TRUE@am__append_42 = wolfcrypt/src/blake2b.c
-@BUILD_HC128_TRUE@am__append_43 = wolfcrypt/src/hc128.c
-@BUILD_RABBIT_TRUE@am__append_44 = wolfcrypt/src/rabbit.c
-@BUILD_CHACHA_TRUE@am__append_45 = wolfcrypt/src/chacha.c
-@BUILD_CHACHA_TRUE@@BUILD_POLY1305_TRUE@am__append_46 = wolfcrypt/src/chacha20_poly1305.c
-@BUILD_INLINE_FALSE@am__append_47 = wolfcrypt/src/misc.c
-@BUILD_FASTMATH_TRUE@am__append_48 = wolfcrypt/src/tfm.c
-@BUILD_SLOWMATH_TRUE@am__append_49 = wolfcrypt/src/integer.c
-@BUILD_ECC_TRUE@am__append_50 = wolfcrypt/src/ecc.c
-@BUILD_CURVE25519_TRUE@am__append_51 = wolfcrypt/src/curve25519.c
-@BUILD_ED25519_TRUE@am__append_52 = wolfcrypt/src/ed25519.c
-@BUILD_CURVED25519_SMALL_TRUE@@BUILD_FEMATH_TRUE@am__append_53 = wolfcrypt/src/fe_low_mem.c
-@BUILD_CURVED25519_SMALL_FALSE@@BUILD_FEMATH_TRUE@am__append_54 = wolfcrypt/src/fe_operations.c
-@BUILD_CURVED25519_SMALL_TRUE@@BUILD_GEMATH_TRUE@am__append_55 = wolfcrypt/src/ge_low_mem.c
-@BUILD_CURVED25519_SMALL_FALSE@@BUILD_GEMATH_TRUE@am__append_56 = wolfcrypt/src/ge_operations.c
-@BUILD_LIBZ_TRUE@am__append_57 = wolfcrypt/src/compress.c
-@BUILD_PKCS7_TRUE@am__append_58 = wolfcrypt/src/pkcs7.c
-@BUILD_SRP_TRUE@am__append_59 = wolfcrypt/src/srp.c
-@BUILD_IDEA_TRUE@am__append_60 = wolfcrypt/src/idea.c
+@BUILD_DSA_TRUE@am__append_39 = wolfcrypt/src/dsa.c
+@BUILD_AESNI_TRUE@am__append_40 = wolfcrypt/src/aes_asm.s
+@BUILD_CAMELLIA_TRUE@am__append_41 = wolfcrypt/src/camellia.c
+@BUILD_MD2_TRUE@am__append_42 = wolfcrypt/src/md2.c
+@BUILD_RIPEMD_TRUE@am__append_43 = wolfcrypt/src/ripemd.c
+@BUILD_BLAKE2_TRUE@am__append_44 = wolfcrypt/src/blake2b.c
+@BUILD_HC128_TRUE@am__append_45 = wolfcrypt/src/hc128.c
+@BUILD_RABBIT_TRUE@am__append_46 = wolfcrypt/src/rabbit.c
+@BUILD_CHACHA_TRUE@am__append_47 = wolfcrypt/src/chacha.c
+@BUILD_CHACHA_TRUE@@BUILD_POLY1305_TRUE@am__append_48 = wolfcrypt/src/chacha20_poly1305.c
+@BUILD_INLINE_FALSE@am__append_49 = wolfcrypt/src/misc.c
+@BUILD_FASTMATH_TRUE@am__append_50 = wolfcrypt/src/tfm.c
+@BUILD_SLOWMATH_TRUE@am__append_51 = wolfcrypt/src/integer.c
+@BUILD_ECC_TRUE@am__append_52 = wolfcrypt/src/ecc.c
+@BUILD_CURVE25519_TRUE@am__append_53 = wolfcrypt/src/curve25519.c
+@BUILD_ED25519_TRUE@am__append_54 = wolfcrypt/src/ed25519.c
+@BUILD_CURVED25519_SMALL_TRUE@@BUILD_FEMATH_TRUE@am__append_55 = wolfcrypt/src/fe_low_mem.c
+@BUILD_CURVED25519_SMALL_FALSE@@BUILD_FEMATH_TRUE@am__append_56 = wolfcrypt/src/fe_operations.c
+@BUILD_CURVED25519_SMALL_TRUE@@BUILD_GEMATH_TRUE@am__append_57 = wolfcrypt/src/ge_low_mem.c
+@BUILD_CURVED25519_SMALL_FALSE@@BUILD_GEMATH_TRUE@am__append_58 = wolfcrypt/src/ge_operations.c
+@BUILD_LIBZ_TRUE@am__append_59 = wolfcrypt/src/compress.c
+@BUILD_PKCS7_TRUE@am__append_60 = wolfcrypt/src/pkcs7.c
+@BUILD_SRP_TRUE@am__append_61 = wolfcrypt/src/srp.c
+@BUILD_IDEA_TRUE@am__append_62 = wolfcrypt/src/idea.c
 
 # ssl files
-@BUILD_CRYPTONLY_FALSE@am__append_61 = \
+@BUILD_CRYPTONLY_FALSE@am__append_63 = \
 @BUILD_CRYPTONLY_FALSE@               src/internal.c \
 @BUILD_CRYPTONLY_FALSE@               src/io.c \
 @BUILD_CRYPTONLY_FALSE@               src/keys.c \
 @BUILD_CRYPTONLY_FALSE@               src/ssl.c \
 @BUILD_CRYPTONLY_FALSE@               src/tls.c
 
-@BUILD_CRYPTONLY_FALSE@@BUILD_OCSP_TRUE@am__append_62 = src/ocsp.c
-@BUILD_CRL_TRUE@@BUILD_CRYPTONLY_FALSE@am__append_63 = src/crl.c
-@BUILD_CRYPTONLY_FALSE@@BUILD_SNIFFER_TRUE@am__append_64 = src/sniffer.c
-@BUILD_WOLFCRYPT_TESTS_TRUE@am__append_65 =  \
+@BUILD_CRYPTONLY_FALSE@@BUILD_OCSP_TRUE@am__append_64 = src/ocsp.c
+@BUILD_CRL_TRUE@@BUILD_CRYPTONLY_FALSE@am__append_65 = src/crl.c
+@BUILD_CRYPTONLY_FALSE@@BUILD_SNIFFER_TRUE@am__append_66 = src/sniffer.c
+@BUILD_WOLFCRYPT_TESTS_TRUE@am__append_67 =  \
 @BUILD_WOLFCRYPT_TESTS_TRUE@	wolfcrypt/benchmark/benchmark \
 @BUILD_WOLFCRYPT_TESTS_TRUE@	wolfcrypt/test/testwolfcrypt \
 @BUILD_WOLFCRYPT_TESTS_TRUE@	wolfcrypt/test/testwolfcrypt
-@BUILD_WOLFCRYPT_TESTS_TRUE@am__append_66 =  \
+@BUILD_WOLFCRYPT_TESTS_TRUE@am__append_68 =  \
 @BUILD_WOLFCRYPT_TESTS_TRUE@	wolfcrypt/benchmark/benchmark.h \
 @BUILD_WOLFCRYPT_TESTS_TRUE@	wolfcrypt/test/test.h
-@BUILD_CAVIUM_TRUE@am__append_67 = wolfcrypt/src/port/cavium/cavium_nitrox.c
-@BUILD_CAVIUM_TRUE@am__append_68 = wolfcrypt/src/port/cavium/README.md
-@BUILD_CRYPTONLY_TRUE@@BUILD_WOLFCRYPT_TESTS_TRUE@am__append_69 = wolfcrypt/test/testwolfcrypt
-@BUILD_EXAMPLE_CLIENTS_TRUE@am__append_70 = examples/client/client \
+@BUILD_CAVIUM_TRUE@am__append_69 = wolfcrypt/src/port/cavium/cavium_nitrox.c
+@BUILD_CAVIUM_TRUE@am__append_70 = wolfcrypt/src/port/cavium/README.md
+@BUILD_INTEL_QA_TRUE@am__append_71 =  \
+@BUILD_INTEL_QA_TRUE@	wolfcrypt/src/port/intel/quickassist.c \
+@BUILD_INTEL_QA_TRUE@	wolfcrypt/src/port/intel/quickassist_mem.c
+@BUILD_INTEL_QA_TRUE@am__append_72 = wolfcrypt/src/port/intel/README.md
+@BUILD_CRYPTONLY_TRUE@@BUILD_WOLFCRYPT_TESTS_TRUE@am__append_73 = wolfcrypt/test/testwolfcrypt
+@BUILD_EXAMPLE_CLIENTS_TRUE@am__append_74 = examples/client/client \
 @BUILD_EXAMPLE_CLIENTS_TRUE@	examples/echoclient/echoclient
-@BUILD_EXAMPLE_CLIENTS_TRUE@am__append_71 = examples/client/client.h \
+@BUILD_EXAMPLE_CLIENTS_TRUE@am__append_75 = examples/client/client.h \
 @BUILD_EXAMPLE_CLIENTS_TRUE@	examples/echoclient/echoclient.h
-@BUILD_EXAMPLE_SERVERS_TRUE@am__append_72 =  \
+@BUILD_EXAMPLE_SERVERS_TRUE@am__append_76 =  \
 @BUILD_EXAMPLE_SERVERS_TRUE@	examples/echoserver/echoserver \
 @BUILD_EXAMPLE_SERVERS_TRUE@	examples/server/server
-@BUILD_EXAMPLE_SERVERS_TRUE@am__append_73 =  \
+@BUILD_EXAMPLE_SERVERS_TRUE@am__append_77 =  \
 @BUILD_EXAMPLE_SERVERS_TRUE@	examples/echoserver/echoserver.h \
 @BUILD_EXAMPLE_SERVERS_TRUE@	examples/server/server.h
-@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_SCTP_TRUE@am__append_74 = \
+@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_SCTP_TRUE@am__append_78 = \
 @BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_SCTP_TRUE@				examples/sctp/sctp-server \
 @BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_SCTP_TRUE@				examples/sctp/sctp-server-dtls
 
-@BUILD_EXAMPLE_CLIENTS_TRUE@@BUILD_SCTP_TRUE@am__append_75 = \
+@BUILD_EXAMPLE_CLIENTS_TRUE@@BUILD_SCTP_TRUE@am__append_79 = \
 @BUILD_EXAMPLE_CLIENTS_TRUE@@BUILD_SCTP_TRUE@				examples/sctp/sctp-client \
 @BUILD_EXAMPLE_CLIENTS_TRUE@@BUILD_SCTP_TRUE@				examples/sctp/sctp-client-dtls
 
-@BUILD_TESTS_TRUE@am__append_76 = testsuite/testsuite.test \
+@BUILD_TESTS_TRUE@am__append_80 = testsuite/testsuite.test \
 @BUILD_TESTS_TRUE@	tests/unit.test
-@BUILD_TESTS_TRUE@am__append_77 = testsuite/testsuite.test \
+@BUILD_TESTS_TRUE@am__append_81 = testsuite/testsuite.test \
 @BUILD_TESTS_TRUE@	tests/unit.test
-@BUILD_SNIFFTEST_TRUE@am__append_78 = sslSniffer/sslSnifferTest/snifftest
-@BUILD_DISTRO_FALSE@am__append_79 = mqx/util_lib/.cproject \
+@BUILD_SNIFFTEST_TRUE@am__append_82 = sslSniffer/sslSnifferTest/snifftest
+@BUILD_DISTRO_FALSE@am__append_83 = mqx/util_lib/.cproject \
 @BUILD_DISTRO_FALSE@	mqx/util_lib/.project \
 @BUILD_DISTRO_FALSE@	mqx/util_lib/Sources/util.c \
 @BUILD_DISTRO_FALSE@	mqx/util_lib/Sources/util.h \
@@ -543,24 +562,32 @@ check_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3)
 @BUILD_DISTRO_FALSE@	IDE/ARDUINO/README.md \
 @BUILD_DISTRO_FALSE@	IDE/ARDUINO/sketches/wolfssl_client/wolfssl_client.ino \
 @BUILD_DISTRO_FALSE@	IDE/ARDUINO/wolfssl-arduino.sh \
+@BUILD_DISTRO_FALSE@	IDE/INTIME-RTOS/README.md \
+@BUILD_DISTRO_FALSE@	IDE/INTIME-RTOS/user_settings.h \
+@BUILD_DISTRO_FALSE@	IDE/INTIME-RTOS/libwolfssl.c \
+@BUILD_DISTRO_FALSE@	IDE/INTIME-RTOS/libwolfssl.vcxproj \
+@BUILD_DISTRO_FALSE@	IDE/INTIME-RTOS/wolfExamples.c \
+@BUILD_DISTRO_FALSE@	IDE/INTIME-RTOS/wolfExamples.h \
+@BUILD_DISTRO_FALSE@	IDE/INTIME-RTOS/wolfExamples.vcxproj \
+@BUILD_DISTRO_FALSE@	IDE/INTIME-RTOS/wolfExamples.sln \
 @BUILD_DISTRO_FALSE@	IDE/IAR-EWARM IDE/MDK-ARM IDE/MDK5-ARM \
-@BUILD_DISTRO_FALSE@	IDE/MYSQL IDE/LPCXPRESSO
-@BUILD_DISTRO_FALSE@@BUILD_MCAPI_TRUE@am__append_80 = mcapi/test
-@BUILD_DISTRO_FALSE@@BUILD_MCAPI_TRUE@am__append_81 = mcapi/test 
-@BUILD_DISTRO_FALSE@am__append_82 = mcapi/crypto.h
-@BUILD_SNIFFTEST_TRUE@am__append_83 = scripts/sniffer-testsuite.test
-@BUILD_EXAMPLE_SERVERS_TRUE@am__append_84 = scripts/resume.test
-@BUILD_EXAMPLE_SERVERS_TRUE@am__append_85 = scripts/benchmark.test
+@BUILD_DISTRO_FALSE@	IDE/MYSQL IDE/LPCXPRESSO IDE/HEXIWEAR
+@BUILD_DISTRO_FALSE@@BUILD_MCAPI_TRUE@am__append_84 = mcapi/test
+@BUILD_DISTRO_FALSE@@BUILD_MCAPI_TRUE@am__append_85 = mcapi/test 
+@BUILD_DISTRO_FALSE@am__append_86 = mcapi/crypto.h
+@BUILD_SNIFFTEST_TRUE@am__append_87 = scripts/sniffer-testsuite.test
+@BUILD_EXAMPLE_SERVERS_TRUE@am__append_88 = scripts/resume.test
+@BUILD_EXAMPLE_SERVERS_TRUE@am__append_89 = scripts/benchmark.test
 
 # make revoked test rely on completion of resume test
-@BUILD_CRL_TRUE@@BUILD_EXAMPLE_SERVERS_TRUE@am__append_86 = scripts/crl-revoked.test
-@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_OCSP_TRUE@am__append_87 = scripts/ocsp.test
-@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_OCSP_STAPLING_TRUE@am__append_88 = scripts/ocsp-stapling.test
-@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_OCSP_STAPLING_V2_TRUE@am__append_89 = scripts/ocsp-stapling2.test
-@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_PSK_TRUE@am__append_90 = scripts/psk.test
-@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_TRUST_PEER_CERT_TRUE@am__append_91 = scripts/trusted_peer.test
-@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_PKCALLBACKS_TRUE@am__append_92 = scripts/pkcallbacks.test
-@BUILD_EXAMPLE_CLIENTS_TRUE@@BUILD_IPV6_FALSE@am__append_93 = scripts/external.test \
+@BUILD_CRL_TRUE@@BUILD_EXAMPLE_SERVERS_TRUE@am__append_90 = scripts/crl-revoked.test
+@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_OCSP_TRUE@am__append_91 = scripts/ocsp.test
+@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_OCSP_STAPLING_TRUE@am__append_92 = scripts/ocsp-stapling.test
+@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_OCSP_STAPLING_V2_TRUE@am__append_93 = scripts/ocsp-stapling2.test
+@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_PSK_TRUE@am__append_94 = scripts/psk.test
+@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_TRUST_PEER_CERT_TRUE@am__append_95 = scripts/trusted_peer.test
+@BUILD_EXAMPLE_SERVERS_TRUE@@BUILD_PKCALLBACKS_TRUE@am__append_96 = scripts/pkcallbacks.test
+@BUILD_EXAMPLE_CLIENTS_TRUE@@BUILD_IPV6_FALSE@am__append_97 = scripts/external.test \
 @BUILD_EXAMPLE_CLIENTS_TRUE@@BUILD_IPV6_FALSE@	scripts/google.test \
 @BUILD_EXAMPLE_CLIENTS_TRUE@@BUILD_IPV6_FALSE@	scripts/openssl.test
 subdir = .
@@ -670,7 +697,9 @@ am__src_libwolfssl_la_SOURCES_DIST = ctaocrypt/src/wolfcrypt_first.c \
 	wolfcrypt/src/compress.c wolfcrypt/src/pkcs7.c \
 	wolfcrypt/src/srp.c wolfcrypt/src/idea.c src/internal.c \
 	src/io.c src/keys.c src/ssl.c src/tls.c src/ocsp.c src/crl.c \
-	src/sniffer.c wolfcrypt/src/port/cavium/cavium_nitrox.c
+	src/sniffer.c wolfcrypt/src/port/cavium/cavium_nitrox.c \
+	wolfcrypt/src/port/intel/quickassist.c \
+	wolfcrypt/src/port/intel/quickassist_mem.c
 am__dirstamp = $(am__leading_dot)dirstamp
 @BUILD_FIPS_TRUE@am__objects_1 = ctaocrypt/src/src_libwolfssl_la-wolfcrypt_first.lo \
 @BUILD_FIPS_TRUE@	ctaocrypt/src/src_libwolfssl_la-hmac.lo \
@@ -768,6 +797,8 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @BUILD_CRL_TRUE@@BUILD_CRYPTONLY_FALSE@am__objects_56 = src/src_libwolfssl_la-crl.lo
 @BUILD_CRYPTONLY_FALSE@@BUILD_SNIFFER_TRUE@am__objects_57 = src/src_libwolfssl_la-sniffer.lo
 @BUILD_CAVIUM_TRUE@am__objects_58 = wolfcrypt/src/port/cavium/src_libwolfssl_la-cavium_nitrox.lo
+@BUILD_INTEL_QA_TRUE@am__objects_59 = wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist.lo \
+@BUILD_INTEL_QA_TRUE@	wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist_mem.lo
 am_src_libwolfssl_la_OBJECTS = $(am__objects_1) $(am__objects_2) \
 	$(am__objects_3) $(am__objects_4) $(am__objects_5) \
 	$(am__objects_6) $(am__objects_7) \
@@ -795,7 +826,7 @@ am_src_libwolfssl_la_OBJECTS = $(am__objects_1) $(am__objects_2) \
 	$(am__objects_49) $(am__objects_50) $(am__objects_51) \
 	$(am__objects_52) $(am__objects_53) $(am__objects_54) \
 	$(am__objects_55) $(am__objects_56) $(am__objects_57) \
-	$(am__objects_58)
+	$(am__objects_58) $(am__objects_59)
 src_libwolfssl_la_OBJECTS = $(am_src_libwolfssl_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -1038,7 +1069,8 @@ am__nobase_include_HEADERS_DIST = cyassl/ctaocrypt/aes.h \
 	cyassl/openssl/opensslconf.h cyassl/openssl/opensslv.h \
 	cyassl/openssl/ossl_typ.h cyassl/openssl/pem.h \
 	cyassl/openssl/pkcs12.h cyassl/openssl/rand.h \
-	cyassl/openssl/rsa.h cyassl/openssl/sha.h cyassl/openssl/ssl.h \
+	cyassl/openssl/rsa.h cyassl/openssl/sha.h \
+	cyassl/openssl/ssl23.h cyassl/openssl/ssl.h \
 	cyassl/openssl/stack.h cyassl/openssl/ui.h \
 	cyassl/openssl/x509.h cyassl/openssl/x509v3.h \
 	cyassl/error-ssl.h cyassl/ssl.h cyassl/sniffer_error.h \
@@ -1076,6 +1108,10 @@ am__nobase_include_HEADERS_DIST = cyassl/ctaocrypt/aes.h \
 	wolfssl/wolfcrypt/mpi_superclass.h \
 	wolfssl/wolfcrypt/mem_track.h wolfssl/wolfcrypt/wolfevent.h \
 	wolfssl/wolfcrypt/pkcs12.h wolfssl/wolfcrypt/wolfmath.h \
+	wolfssl/wolfcrypt/async.h \
+	wolfssl/wolfcrypt/port/cavium/cavium_nitrox.h \
+	wolfssl/wolfcrypt/port/intel/quickassist.h \
+	wolfssl/wolfcrypt/port/intel/quickassist_mem.h \
 	wolfssl/openssl/asn1.h wolfssl/openssl/aes.h \
 	wolfssl/openssl/bio.h wolfssl/openssl/bn.h \
 	wolfssl/openssl/conf.h wolfssl/openssl/crypto.h \
@@ -1091,13 +1127,13 @@ am__nobase_include_HEADERS_DIST = cyassl/ctaocrypt/aes.h \
 	wolfssl/openssl/opensslv.h wolfssl/openssl/ossl_typ.h \
 	wolfssl/openssl/pem.h wolfssl/openssl/pkcs12.h \
 	wolfssl/openssl/rand.h wolfssl/openssl/rsa.h \
-	wolfssl/openssl/sha.h wolfssl/openssl/ssl.h \
-	wolfssl/openssl/stack.h wolfssl/openssl/ui.h \
-	wolfssl/openssl/x509.h wolfssl/openssl/x509v3.h \
-	wolfssl/error-ssl.h wolfssl/ssl.h wolfssl/sniffer_error.h \
-	wolfssl/sniffer.h wolfssl/callbacks.h wolfssl/certs_test.h \
-	wolfssl/test.h wolfssl/version.h wolfssl/ocsp.h wolfssl/crl.h \
-	wolfssl/options.h
+	wolfssl/openssl/sha.h wolfssl/openssl/ssl23.h \
+	wolfssl/openssl/ssl.h wolfssl/openssl/stack.h \
+	wolfssl/openssl/ui.h wolfssl/openssl/x509.h \
+	wolfssl/openssl/x509v3.h wolfssl/error-ssl.h wolfssl/ssl.h \
+	wolfssl/sniffer_error.h wolfssl/sniffer.h wolfssl/callbacks.h \
+	wolfssl/certs_test.h wolfssl/test.h wolfssl/version.h \
+	wolfssl/ocsp.h wolfssl/crl.h wolfssl/io.h wolfssl/options.h
 am__noinst_HEADERS_DIST = cyassl/ctaocrypt/port/pic32/pic32mz-crypt.h \
 	cyassl/internal.h cyassl/options.h \
 	wolfssl/wolfcrypt/port/pic32/pic32mz-crypt.h \
@@ -1105,11 +1141,10 @@ am__noinst_HEADERS_DIST = cyassl/ctaocrypt/port/pic32/pic32mz-crypt.h \
 	wolfssl/wolfcrypt/port/ti/ti-ccm.h \
 	wolfssl/wolfcrypt/port/nrf51.h \
 	wolfssl/wolfcrypt/port/nxp/ksdk_port.h \
-	wolfssl/wolfcrypt/port/atmel/atmel.h \
-	wolfssl/wolfcrypt/port/cavium/cavium_nitrox.h \
-	wolfssl/internal.h wolfssl/options.h \
-	wolfcrypt/benchmark/benchmark.h wolfcrypt/test/test.h \
-	examples/client/client.h examples/echoclient/echoclient.h \
+	wolfssl/wolfcrypt/port/atmel/atmel.h wolfssl/internal.h \
+	wolfssl/options.h wolfcrypt/benchmark/benchmark.h \
+	wolfcrypt/test/test.h examples/client/client.h \
+	examples/echoclient/echoclient.h \
 	examples/echoserver/echoserver.h examples/server/server.h \
 	mcapi/crypto.h
 HEADERS = $(include_HEADERS) $(nobase_include_HEADERS) \
@@ -1312,6 +1347,7 @@ TEST_LOG_DRIVER = $(SHELL) $(top_srcdir)/build-aux/test-driver
 TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
 	$(TEST_LOG_FLAGS)
 am__DIST_COMMON = $(srcdir)/IDE/ARDUINO/include.am \
+	$(srcdir)/IDE/INTIME-RTOS/include.am \
 	$(srcdir)/IDE/ROWLEY-CROSSWORKS-ARM/include.am \
 	$(srcdir)/IDE/WIN-SGX/include.am $(srcdir)/IDE/WIN/include.am \
 	$(srcdir)/IDE/WORKBENCH/include.am \
@@ -1320,7 +1356,8 @@ am__DIST_COMMON = $(srcdir)/IDE/ARDUINO/include.am \
 	$(srcdir)/certs/crl/include.am \
 	$(srcdir)/certs/external/include.am $(srcdir)/certs/include.am \
 	$(srcdir)/certs/ocsp/include.am \
-	$(srcdir)/certs/test-pathlen/include.am $(srcdir)/config.in \
+	$(srcdir)/certs/test-pathlen/include.am \
+	$(srcdir)/certs/test/include.am $(srcdir)/config.in \
 	$(srcdir)/cyassl/ctaocrypt/include.am \
 	$(srcdir)/cyassl/include.am \
 	$(srcdir)/cyassl/openssl/include.am $(srcdir)/doc/include.am \
@@ -1557,7 +1594,16 @@ CLEANFILES = cert.der cert.pem certecc.der certecc.pem certreq.der \
 	pkcs7envelopedDataAES256CBC_ECDH_SHA512KDF_ukm.der \
 	pkcs7envelopedDataDES3.der pkcs7envelopedDataAES128CBC.der \
 	pkcs7envelopedDataAES192CBC.der \
-	pkcs7envelopedDataAES256CBC.der pkcs7signedData.der
+	pkcs7envelopedDataAES256CBC.der pkcs7signedData_RSA_SHA.der \
+	pkcs7signedData_RSA_SHA_noattr.der \
+	pkcs7signedData_RSA_SHA224.der pkcs7signedData_RSA_SHA256.der \
+	pkcs7signedData_RSA_SHA384.der pkcs7signedData_RSA_SHA512.der \
+	pkcs7signedData_ECDSA_SHA.der \
+	pkcs7signedData_ECDSA_SHA_noattr.der \
+	pkcs7signedData_ECDSA_SHA224.der \
+	pkcs7signedData_ECDSA_SHA256.der \
+	pkcs7signedData_ECDSA_SHA384.der \
+	pkcs7signedData_ECDSA_SHA512.der
 DISTCLEANFILES = aminclude.am wolfcrypt/benchmark/.libs/benchmark \
 	wolfcrypt/test/.libs/testwolfcrypt \
 	examples/client/.libs/client \
@@ -1577,13 +1623,13 @@ noinst_HEADERS = cyassl/ctaocrypt/port/pic32/pic32mz-crypt.h \
 	wolfssl/wolfcrypt/port/ti/ti-ccm.h \
 	wolfssl/wolfcrypt/port/nrf51.h \
 	wolfssl/wolfcrypt/port/nxp/ksdk_port.h \
-	wolfssl/wolfcrypt/port/atmel/atmel.h $(am__append_3) \
-	wolfssl/internal.h $(am__append_4) $(am__append_66) \
-	$(am__append_71) $(am__append_73) $(am__append_82)
+	wolfssl/wolfcrypt/port/atmel/atmel.h wolfssl/internal.h \
+	$(am__append_6) $(am__append_68) $(am__append_75) \
+	$(am__append_77) $(am__append_86)
 lib_LTLIBRARIES = src/libwolfssl.la
 man_MANS = 
 noinst_LTLIBRARIES = 
-include_HEADERS = $(am__append_7)
+include_HEADERS = $(am__append_9)
 nobase_include_HEADERS = cyassl/ctaocrypt/aes.h \
 	cyassl/ctaocrypt/arc4.h cyassl/ctaocrypt/asn.h \
 	cyassl/ctaocrypt/asn_public.h cyassl/ctaocrypt/poly1305.h \
@@ -1620,7 +1666,8 @@ nobase_include_HEADERS = cyassl/ctaocrypt/aes.h \
 	cyassl/openssl/opensslconf.h cyassl/openssl/opensslv.h \
 	cyassl/openssl/ossl_typ.h cyassl/openssl/pem.h \
 	cyassl/openssl/pkcs12.h cyassl/openssl/rand.h \
-	cyassl/openssl/rsa.h cyassl/openssl/sha.h cyassl/openssl/ssl.h \
+	cyassl/openssl/rsa.h cyassl/openssl/sha.h \
+	cyassl/openssl/ssl23.h cyassl/openssl/ssl.h \
 	cyassl/openssl/stack.h cyassl/openssl/ui.h \
 	cyassl/openssl/x509.h cyassl/openssl/x509v3.h \
 	cyassl/error-ssl.h cyassl/ssl.h cyassl/sniffer_error.h \
@@ -1658,6 +1705,7 @@ nobase_include_HEADERS = cyassl/ctaocrypt/aes.h \
 	wolfssl/wolfcrypt/mpi_superclass.h \
 	wolfssl/wolfcrypt/mem_track.h wolfssl/wolfcrypt/wolfevent.h \
 	wolfssl/wolfcrypt/pkcs12.h wolfssl/wolfcrypt/wolfmath.h \
+	$(am__append_3) $(am__append_4) $(am__append_5) \
 	wolfssl/openssl/asn1.h wolfssl/openssl/aes.h \
 	wolfssl/openssl/bio.h wolfssl/openssl/bn.h \
 	wolfssl/openssl/conf.h wolfssl/openssl/crypto.h \
@@ -1673,13 +1721,13 @@ nobase_include_HEADERS = cyassl/ctaocrypt/aes.h \
 	wolfssl/openssl/opensslv.h wolfssl/openssl/ossl_typ.h \
 	wolfssl/openssl/pem.h wolfssl/openssl/pkcs12.h \
 	wolfssl/openssl/rand.h wolfssl/openssl/rsa.h \
-	wolfssl/openssl/sha.h wolfssl/openssl/ssl.h \
-	wolfssl/openssl/stack.h wolfssl/openssl/ui.h \
-	wolfssl/openssl/x509.h wolfssl/openssl/x509v3.h \
-	wolfssl/error-ssl.h wolfssl/ssl.h wolfssl/sniffer_error.h \
-	wolfssl/sniffer.h wolfssl/callbacks.h wolfssl/certs_test.h \
-	wolfssl/test.h wolfssl/version.h wolfssl/ocsp.h wolfssl/crl.h \
-	$(am__append_5)
+	wolfssl/openssl/sha.h wolfssl/openssl/ssl23.h \
+	wolfssl/openssl/ssl.h wolfssl/openssl/stack.h \
+	wolfssl/openssl/ui.h wolfssl/openssl/x509.h \
+	wolfssl/openssl/x509v3.h wolfssl/error-ssl.h wolfssl/ssl.h \
+	wolfssl/sniffer_error.h wolfssl/sniffer.h wolfssl/callbacks.h \
+	wolfssl/certs_test.h wolfssl/test.h wolfssl/version.h \
+	wolfssl/ocsp.h wolfssl/crl.h wolfssl/io.h $(am__append_7)
 EXTRA_HEADERS = 
 BUILT_SOURCES = 
 
@@ -1756,12 +1804,12 @@ EXTRA_DIST = lib/dummy wolfssl-ntru.vcproj wolfssl.vcproj \
 	certs/server-cert.pem certs/server-ecc.pem \
 	certs/server-ecc-comp.pem certs/server-ecc-rsa.pem \
 	certs/server-keyEnc.pem certs/server-key.pem \
-	certs/server-keyPkcs8Enc12.pem certs/server-keyPkcs8Enc2.pem \
-	certs/server-keyPkcs8Enc.pem certs/server-keyPkcs8.pem \
-	certs/server-revoked-cert.pem certs/server-revoked-key.pem \
-	certs/wolfssl-website-ca.pem certs/test-servercert.p12 \
-	certs/dsaparams.pem certs/ca-key.der certs/ca-cert.der \
-	certs/client-cert.der certs/client-key.der \
+	certs/server-keyPkcs8.der certs/server-keyPkcs8Enc12.pem \
+	certs/server-keyPkcs8Enc2.pem certs/server-keyPkcs8Enc.pem \
+	certs/server-keyPkcs8.pem certs/server-revoked-cert.pem \
+	certs/server-revoked-key.pem certs/wolfssl-website-ca.pem \
+	certs/test-servercert.p12 certs/dsaparams.pem certs/ca-key.der \
+	certs/ca-cert.der certs/client-cert.der certs/client-key.der \
 	certs/client-ecc-cert.der certs/client-keyPub.der \
 	certs/dh2048.der certs/rsa2048.der certs/dsa2048.der \
 	certs/ecc-client-key.der certs/ecc-client-keyPub.der \
@@ -1769,6 +1817,10 @@ EXTRA_DIST = lib/dummy wolfssl-ntru.vcproj wolfssl.vcproj \
 	certs/server-cert.der certs/server-ecc-comp.der \
 	certs/server-ecc.der certs/server-ecc-rsa.der \
 	certs/server-cert-chain.der certs/ntru-key.raw \
+	certs/test/cert-ext-ia.cfg certs/test/cert-ext-ia.der \
+	certs/test/cert-ext-nc.cfg certs/test/cert-ext-nc.der \
+	certs/test/cert-ext-ns.der certs/test/gen-ext-certs.sh \
+	certs/test/server-duplicate-policy.pem \
 	certs/test-pathlen/server-0-1-ca.pem \
 	certs/test-pathlen/server-0-1-cert.pem \
 	certs/test-pathlen/server-0-1-chain.pem \
@@ -1786,7 +1838,11 @@ EXTRA_DIST = lib/dummy wolfssl-ntru.vcproj wolfssl.vcproj \
 	certs/test-pathlen/server-127-chain.pem \
 	certs/test-pathlen/server-128-ca.pem \
 	certs/test-pathlen/server-128-cert.pem \
-	certs/test-pathlen/server-128-chain.pem certs/1024/ca-cert.pem \
+	certs/test-pathlen/server-128-chain.pem \
+	certs/test/cert-ext-ia.cfg certs/test/cert-ext-ia.der \
+	certs/test/cert-ext-nc.cfg certs/test/cert-ext-nc.der \
+	certs/test/cert-ext-ns.der certs/test/gen-ext-certs.sh \
+	certs/test/server-duplicate-policy.pem certs/1024/ca-cert.pem \
 	certs/1024/ca-key.pem certs/1024/client-cert.pem \
 	certs/1024/client-key.pem certs/1024/dh1024.pem \
 	certs/1024/dsa1024.pem certs/1024/server-cert.pem \
@@ -1852,16 +1908,18 @@ EXTRA_DIST = lib/dummy wolfssl-ntru.vcproj wolfssl.vcproj \
 	wolfcrypt/src/fp_sqr_comba_7.i wolfcrypt/src/fp_sqr_comba_8.i \
 	wolfcrypt/src/fp_sqr_comba_9.i \
 	wolfcrypt/src/fp_sqr_comba_small_set.i \
-	wolfcrypt/src/port/ti/ti-aes.c wolfcrypt/src/port/ti/ti-des3.c \
+	wolfcrypt/src/fe_x25519_128.i wolfcrypt/src/port/ti/ti-aes.c \
+	wolfcrypt/src/port/ti/ti-des3.c \
 	wolfcrypt/src/port/ti/ti-hash.c wolfcrypt/src/port/ti/ti-ccm.c \
 	wolfcrypt/src/port/pic32/pic32mz-hash.c \
 	wolfcrypt/src/port/nrf51.c wolfcrypt/src/port/arm/armv8-aes.c \
 	wolfcrypt/src/port/arm/armv8-sha256.c \
 	wolfcrypt/src/port/nxp/ksdk_port.c \
 	wolfcrypt/src/port/atmel/atmel.c \
-	wolfcrypt/src/port/atmel/README.md $(am__append_68) \
-	wolfcrypt/test/test.sln wolfcrypt/test/test.vcproj \
-	examples/client/client.sln examples/client/client-ntru.vcproj \
+	wolfcrypt/src/port/atmel/README.md $(am__append_70) \
+	$(am__append_72) wolfcrypt/test/test.sln \
+	wolfcrypt/test/test.vcproj examples/client/client.sln \
+	examples/client/client-ntru.vcproj \
 	examples/client/client.vcproj examples/client/client.vcxproj \
 	examples/echoclient/echoclient.sln \
 	examples/echoclient/echoclient-ntru.vcproj \
@@ -1879,15 +1937,15 @@ EXTRA_DIST = lib/dummy wolfssl-ntru.vcproj wolfssl.vcproj \
 	tests/test-psk-no-id.conf tests/test-dtls.conf \
 	tests/test-sctp.conf tests/test-sig.conf \
 	sslSniffer/sslSniffer.vcproj sslSniffer/sslSniffer.vcxproj \
-	sslSniffer/sslSnifferTest/sslSniffTest.vcproj $(am__append_79) \
-	$(am__append_85) scripts/testsuite.pcap scripts/ping.test \
+	sslSniffer/sslSnifferTest/sslSniffTest.vcproj $(am__append_83) \
+	$(am__append_89) scripts/testsuite.pcap scripts/ping.test \
 	scripts/openssl.test
 dist_doc_DATA = certs/taoCert.txt doc/README.txt
-dist_noinst_SCRIPTS = $(am__append_83) $(am__append_84) \
-	$(am__append_86) $(am__append_87) $(am__append_88) \
-	$(am__append_89) $(am__append_90) $(am__append_91) \
-	$(am__append_92) $(am__append_93)
-noinst_SCRIPTS = $(am__append_6)
+dist_noinst_SCRIPTS = $(am__append_87) $(am__append_88) \
+	$(am__append_90) $(am__append_91) $(am__append_92) \
+	$(am__append_93) $(am__append_94) $(am__append_95) \
+	$(am__append_96) $(am__append_97)
+noinst_SCRIPTS = $(am__append_8)
 check_SCRIPTS = $(dist_noinst_SCRIPTS)
 exampledir = $(docdir)/example
 dist_example_DATA = examples/client/client.c \
@@ -1896,29 +1954,30 @@ dist_example_DATA = examples/client/client.c \
 	examples/sctp/sctp-server.c examples/sctp/sctp-server-dtls.c \
 	examples/sctp/sctp-client.c examples/sctp/sctp-client-dtls.c
 ACLOCAL_AMFLAGS = -I m4
-src_libwolfssl_la_SOURCES = $(am__append_8) $(am__append_9) \
-	$(am__append_10) $(am__append_11) $(am__append_12) \
-	$(am__append_13) $(am__append_14) wolfcrypt/src/hmac.c \
-	wolfcrypt/src/hash.c $(am__append_15) $(am__append_16) \
-	$(am__append_17) $(am__append_18) $(am__append_19) \
-	$(am__append_20) $(am__append_21) $(am__append_22) \
-	$(am__append_23) $(am__append_24) $(am__append_25) \
-	$(am__append_26) $(am__append_27) wolfcrypt/src/logging.c \
+src_libwolfssl_la_SOURCES = $(am__append_10) $(am__append_11) \
+	$(am__append_12) $(am__append_13) $(am__append_14) \
+	$(am__append_15) $(am__append_16) wolfcrypt/src/hmac.c \
+	wolfcrypt/src/hash.c $(am__append_17) $(am__append_18) \
+	$(am__append_19) $(am__append_20) $(am__append_21) \
+	$(am__append_22) $(am__append_23) $(am__append_24) \
+	$(am__append_25) $(am__append_26) $(am__append_27) \
+	$(am__append_28) $(am__append_29) wolfcrypt/src/logging.c \
 	wolfcrypt/src/wc_encrypt.c wolfcrypt/src/wc_port.c \
 	wolfcrypt/src/error.c wolfcrypt/src/signature.c \
-	wolfcrypt/src/wolfmath.c $(am__append_28) $(am__append_29) \
-	$(am__append_30) $(am__append_31) $(am__append_32) \
-	$(am__append_33) $(am__append_34) $(am__append_35) \
-	$(am__append_36) $(am__append_37) $(am__append_38) \
-	$(am__append_39) $(am__append_40) $(am__append_41) \
-	$(am__append_42) $(am__append_43) $(am__append_44) \
-	$(am__append_45) $(am__append_46) $(am__append_47) \
-	$(am__append_48) $(am__append_49) $(am__append_50) \
-	$(am__append_51) $(am__append_52) $(am__append_53) \
-	$(am__append_54) $(am__append_55) $(am__append_56) \
-	$(am__append_57) $(am__append_58) $(am__append_59) \
-	$(am__append_60) $(am__append_61) $(am__append_62) \
-	$(am__append_63) $(am__append_64) $(am__append_67)
+	wolfcrypt/src/wolfmath.c $(am__append_30) $(am__append_31) \
+	$(am__append_32) $(am__append_33) $(am__append_34) \
+	$(am__append_35) $(am__append_36) $(am__append_37) \
+	$(am__append_38) $(am__append_39) $(am__append_40) \
+	$(am__append_41) $(am__append_42) $(am__append_43) \
+	$(am__append_44) $(am__append_45) $(am__append_46) \
+	$(am__append_47) $(am__append_48) $(am__append_49) \
+	$(am__append_50) $(am__append_51) $(am__append_52) \
+	$(am__append_53) $(am__append_54) $(am__append_55) \
+	$(am__append_56) $(am__append_57) $(am__append_58) \
+	$(am__append_59) $(am__append_60) $(am__append_61) \
+	$(am__append_62) $(am__append_63) $(am__append_64) \
+	$(am__append_65) $(am__append_66) $(am__append_69) \
+	$(am__append_71)
 src_libwolfssl_la_LDFLAGS = ${AM_LDFLAGS} -no-undefined -version-info ${WOLFSSL_LIBRARY_VERSION}
 src_libwolfssl_la_LIBADD = $(LIBM) $(LIB_ADD) $(LIB_STATIC_ADD)
 src_libwolfssl_la_CFLAGS = -DBUILDING_WOLFSSL $(AM_CFLAGS)
@@ -1997,7 +2056,7 @@ all: $(BUILT_SOURCES) config.h
 .SUFFIXES: .c .lo .log .o .obj .s .test .test$(EXEEXT) .trs
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/wrapper/include.am $(srcdir)/wrapper/python/wolfcrypt/include.am $(srcdir)/cyassl/include.am $(srcdir)/cyassl/ctaocrypt/include.am $(srcdir)/cyassl/openssl/include.am $(srcdir)/wolfssl/include.am $(srcdir)/wolfssl/wolfcrypt/include.am $(srcdir)/wolfssl/openssl/include.am $(srcdir)/certs/include.am $(srcdir)/certs/test-pathlen/include.am $(srcdir)/certs/1024/include.am $(srcdir)/certs/crl/include.am $(srcdir)/certs/external/include.am $(srcdir)/certs/ocsp/include.am $(srcdir)/doc/include.am $(srcdir)/swig/include.am $(srcdir)/src/include.am $(srcdir)/support/include.am $(srcdir)/wolfcrypt/user-crypto/include.am $(srcdir)/wolfcrypt/benchmark/include.am $(srcdir)/wolfcrypt/src/include.am $(srcdir)/wolfcrypt/test/include.am $(srcdir)/examples/include.am $(srcdir)/examples/client/include.am $(srcdir)/examples/echoclient/include.am $(srcdir)/examples/echoserver/include.am $(srcdir)/examples/server/include.am $(srcdir)/examples/sctp/include.am $(srcdir)/testsuite/include.am $(srcdir)/tests/include.am $(srcdir)/sslSniffer/sslSnifferTest/include.am $(srcdir)/rpm/include.am $(srcdir)/mqx/util_lib/Sources/include.am $(srcdir)/mqx/wolfcrypt_benchmark/Sources/include.am $(srcdir)/mqx/wolfcrypt_test/Sources/include.am $(srcdir)/mqx/wolfssl/include.am $(srcdir)/mqx/wolfssl_client/Sources/include.am $(srcdir)/mplabx/include.am $(srcdir)/mplabx/wolfcrypt_benchmark.X/nbproject/include.am $(srcdir)/mplabx/wolfcrypt_test.X/nbproject/include.am $(srcdir)/mplabx/wolfssl.X/nbproject/include.am $(srcdir)/mcapi/include.am $(srcdir)/mcapi/wolfcrypt_mcapi.X/nbproject/include.am $(srcdir)/mcapi/wolfcrypt_test.X/nbproject/include.am $(srcdir)/mcapi/wolfssl.X/nbproject/include.am $(srcdir)/mcapi/zlib.X/nbproject/include.am $(srcdir)/tirtos/include.am $(srcdir)/IDE/include.am $(srcdir)/IDE/iOS/include.am $(srcdir)/IDE/WIN/include.am $(srcdir)/IDE/WIN-SGX/include.am $(srcdir)/IDE/WORKBENCH/include.am $(srcdir)/IDE/ROWLEY-CROSSWORKS-ARM/include.am $(srcdir)/IDE/ARDUINO/include.am $(srcdir)/scripts/include.am $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/wrapper/include.am $(srcdir)/wrapper/python/wolfcrypt/include.am $(srcdir)/cyassl/include.am $(srcdir)/cyassl/ctaocrypt/include.am $(srcdir)/cyassl/openssl/include.am $(srcdir)/wolfssl/include.am $(srcdir)/wolfssl/wolfcrypt/include.am $(srcdir)/wolfssl/openssl/include.am $(srcdir)/certs/include.am $(srcdir)/certs/test/include.am $(srcdir)/certs/test-pathlen/include.am $(srcdir)/certs/test/include.am $(srcdir)/certs/1024/include.am $(srcdir)/certs/crl/include.am $(srcdir)/certs/external/include.am $(srcdir)/certs/ocsp/include.am $(srcdir)/doc/include.am $(srcdir)/swig/include.am $(srcdir)/src/include.am $(srcdir)/support/include.am $(srcdir)/wolfcrypt/user-crypto/include.am $(srcdir)/wolfcrypt/benchmark/include.am $(srcdir)/wolfcrypt/src/include.am $(srcdir)/wolfcrypt/test/include.am $(srcdir)/examples/include.am $(srcdir)/examples/client/include.am $(srcdir)/examples/echoclient/include.am $(srcdir)/examples/echoserver/include.am $(srcdir)/examples/server/include.am $(srcdir)/examples/sctp/include.am $(srcdir)/testsuite/include.am $(srcdir)/tests/include.am $(srcdir)/sslSniffer/sslSnifferTest/include.am $(srcdir)/rpm/include.am $(srcdir)/mqx/util_lib/Sources/include.am $(srcdir)/mqx/wolfcrypt_benchmark/Sources/include.am $(srcdir)/mqx/wolfcrypt_test/Sources/include.am $(srcdir)/mqx/wolfssl/include.am $(srcdir)/mqx/wolfssl_client/Sources/include.am $(srcdir)/mplabx/include.am $(srcdir)/mplabx/wolfcrypt_benchmark.X/nbproject/include.am $(srcdir)/mplabx/wolfcrypt_test.X/nbproject/include.am $(srcdir)/mplabx/wolfssl.X/nbproject/include.am $(srcdir)/mcapi/include.am $(srcdir)/mcapi/wolfcrypt_mcapi.X/nbproject/include.am $(srcdir)/mcapi/wolfcrypt_test.X/nbproject/include.am $(srcdir)/mcapi/wolfssl.X/nbproject/include.am $(srcdir)/mcapi/zlib.X/nbproject/include.am $(srcdir)/tirtos/include.am $(srcdir)/IDE/include.am $(srcdir)/IDE/iOS/include.am $(srcdir)/IDE/WIN/include.am $(srcdir)/IDE/WIN-SGX/include.am $(srcdir)/IDE/WORKBENCH/include.am $(srcdir)/IDE/ROWLEY-CROSSWORKS-ARM/include.am $(srcdir)/IDE/ARDUINO/include.am $(srcdir)/IDE/INTIME-RTOS/include.am $(srcdir)/scripts/include.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -2019,7 +2078,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/wrapper/include.am $(srcdir)/wrapper/python/wolfcrypt/include.am $(srcdir)/cyassl/include.am $(srcdir)/cyassl/ctaocrypt/include.am $(srcdir)/cyassl/openssl/include.am $(srcdir)/wolfssl/include.am $(srcdir)/wolfssl/wolfcrypt/include.am $(srcdir)/wolfssl/openssl/include.am $(srcdir)/certs/include.am $(srcdir)/certs/test-pathlen/include.am $(srcdir)/certs/1024/include.am $(srcdir)/certs/crl/include.am $(srcdir)/certs/external/include.am $(srcdir)/certs/ocsp/include.am $(srcdir)/doc/include.am $(srcdir)/swig/include.am $(srcdir)/src/include.am $(srcdir)/support/include.am $(srcdir)/wolfcrypt/user-crypto/include.am $(srcdir)/wolfcrypt/benchmark/include.am $(srcdir)/wolfcrypt/src/include.am $(srcdir)/wolfcrypt/test/include.am $(srcdir)/examples/include.am $(srcdir)/examples/client/include.am $(srcdir)/examples/echoclient/include.am $(srcdir)/examples/echoserver/include.am $(srcdir)/examples/server/include.am $(srcdir)/examples/sctp/include.am $(srcdir)/testsuite/include.am $(srcdir)/tests/include.am $(srcdir)/sslSniffer/sslSnifferTest/include.am $(srcdir)/rpm/include.am $(srcdir)/mqx/util_lib/Sources/include.am $(srcdir)/mqx/wolfcrypt_benchmark/Sources/include.am $(srcdir)/mqx/wolfcrypt_test/Sources/include.am $(srcdir)/mqx/wolfssl/include.am $(srcdir)/mqx/wolfssl_client/Sources/include.am $(srcdir)/mplabx/include.am $(srcdir)/mplabx/wolfcrypt_benchmark.X/nbproject/include.am $(srcdir)/mplabx/wolfcrypt_test.X/nbproject/include.am $(srcdir)/mplabx/wolfssl.X/nbproject/include.am $(srcdir)/mcapi/include.am $(srcdir)/mcapi/wolfcrypt_mcapi.X/nbproject/include.am $(srcdir)/mcapi/wolfcrypt_test.X/nbproject/include.am $(srcdir)/mcapi/wolfssl.X/nbproject/include.am $(srcdir)/mcapi/zlib.X/nbproject/include.am $(srcdir)/tirtos/include.am $(srcdir)/IDE/include.am $(srcdir)/IDE/iOS/include.am $(srcdir)/IDE/WIN/include.am $(srcdir)/IDE/WIN-SGX/include.am $(srcdir)/IDE/WORKBENCH/include.am $(srcdir)/IDE/ROWLEY-CROSSWORKS-ARM/include.am $(srcdir)/IDE/ARDUINO/include.am $(srcdir)/scripts/include.am $(am__empty):
+$(srcdir)/wrapper/include.am $(srcdir)/wrapper/python/wolfcrypt/include.am $(srcdir)/cyassl/include.am $(srcdir)/cyassl/ctaocrypt/include.am $(srcdir)/cyassl/openssl/include.am $(srcdir)/wolfssl/include.am $(srcdir)/wolfssl/wolfcrypt/include.am $(srcdir)/wolfssl/openssl/include.am $(srcdir)/certs/include.am $(srcdir)/certs/test/include.am $(srcdir)/certs/test-pathlen/include.am $(srcdir)/certs/test/include.am $(srcdir)/certs/1024/include.am $(srcdir)/certs/crl/include.am $(srcdir)/certs/external/include.am $(srcdir)/certs/ocsp/include.am $(srcdir)/doc/include.am $(srcdir)/swig/include.am $(srcdir)/src/include.am $(srcdir)/support/include.am $(srcdir)/wolfcrypt/user-crypto/include.am $(srcdir)/wolfcrypt/benchmark/include.am $(srcdir)/wolfcrypt/src/include.am $(srcdir)/wolfcrypt/test/include.am $(srcdir)/examples/include.am $(srcdir)/examples/client/include.am $(srcdir)/examples/echoclient/include.am $(srcdir)/examples/echoserver/include.am $(srcdir)/examples/server/include.am $(srcdir)/examples/sctp/include.am $(srcdir)/testsuite/include.am $(srcdir)/tests/include.am $(srcdir)/sslSniffer/sslSnifferTest/include.am $(srcdir)/rpm/include.am $(srcdir)/mqx/util_lib/Sources/include.am $(srcdir)/mqx/wolfcrypt_benchmark/Sources/include.am $(srcdir)/mqx/wolfcrypt_test/Sources/include.am $(srcdir)/mqx/wolfssl/include.am $(srcdir)/mqx/wolfssl_client/Sources/include.am $(srcdir)/mplabx/include.am $(srcdir)/mplabx/wolfcrypt_benchmark.X/nbproject/include.am $(srcdir)/mplabx/wolfcrypt_test.X/nbproject/include.am $(srcdir)/mplabx/wolfssl.X/nbproject/include.am $(srcdir)/mcapi/include.am $(srcdir)/mcapi/wolfcrypt_mcapi.X/nbproject/include.am $(srcdir)/mcapi/wolfcrypt_test.X/nbproject/include.am $(srcdir)/mcapi/wolfssl.X/nbproject/include.am $(srcdir)/mcapi/zlib.X/nbproject/include.am $(srcdir)/tirtos/include.am $(srcdir)/IDE/include.am $(srcdir)/IDE/iOS/include.am $(srcdir)/IDE/WIN/include.am $(srcdir)/IDE/WIN-SGX/include.am $(srcdir)/IDE/WORKBENCH/include.am $(srcdir)/IDE/ROWLEY-CROSSWORKS-ARM/include.am $(srcdir)/IDE/ARDUINO/include.am $(srcdir)/IDE/INTIME-RTOS/include.am $(srcdir)/scripts/include.am $(am__empty):
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -2340,6 +2399,18 @@ wolfcrypt/src/port/cavium/$(DEPDIR)/$(am__dirstamp):
 wolfcrypt/src/port/cavium/src_libwolfssl_la-cavium_nitrox.lo:  \
 	wolfcrypt/src/port/cavium/$(am__dirstamp) \
 	wolfcrypt/src/port/cavium/$(DEPDIR)/$(am__dirstamp)
+wolfcrypt/src/port/intel/$(am__dirstamp):
+	@$(MKDIR_P) wolfcrypt/src/port/intel
+	@: > wolfcrypt/src/port/intel/$(am__dirstamp)
+wolfcrypt/src/port/intel/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) wolfcrypt/src/port/intel/$(DEPDIR)
+	@: > wolfcrypt/src/port/intel/$(DEPDIR)/$(am__dirstamp)
+wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist.lo:  \
+	wolfcrypt/src/port/intel/$(am__dirstamp) \
+	wolfcrypt/src/port/intel/$(DEPDIR)/$(am__dirstamp)
+wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist_mem.lo:  \
+	wolfcrypt/src/port/intel/$(am__dirstamp) \
+	wolfcrypt/src/port/intel/$(DEPDIR)/$(am__dirstamp)
 
 src/libwolfssl.la: $(src_libwolfssl_la_OBJECTS) $(src_libwolfssl_la_DEPENDENCIES) $(EXTRA_src_libwolfssl_la_DEPENDENCIES) src/$(am__dirstamp)
 	$(AM_V_CCLD)$(src_libwolfssl_la_LINK) -rpath $(libdir) $(src_libwolfssl_la_OBJECTS) $(src_libwolfssl_la_LIBADD) $(LIBS)
@@ -2620,6 +2691,8 @@ mostlyclean-compile:
 	-rm -f wolfcrypt/src/port/arm/*.lo
 	-rm -f wolfcrypt/src/port/cavium/*.$(OBJEXT)
 	-rm -f wolfcrypt/src/port/cavium/*.lo
+	-rm -f wolfcrypt/src/port/intel/*.$(OBJEXT)
+	-rm -f wolfcrypt/src/port/intel/*.lo
 	-rm -f wolfcrypt/test/*.$(OBJEXT)
 	-rm -f wolfcrypt/user-crypto/src/*.$(OBJEXT)
 	-rm -f wolfcrypt/user-crypto/src/*.lo
@@ -2725,6 +2798,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@wolfcrypt/src/port/arm/$(DEPDIR)/src_libwolfssl_la-armv8-aes.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wolfcrypt/src/port/arm/$(DEPDIR)/src_libwolfssl_la-armv8-sha256.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wolfcrypt/src/port/cavium/$(DEPDIR)/src_libwolfssl_la-cavium_nitrox.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@wolfcrypt/src/port/intel/$(DEPDIR)/src_libwolfssl_la-quickassist.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@wolfcrypt/src/port/intel/$(DEPDIR)/src_libwolfssl_la-quickassist_mem.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wolfcrypt/test/$(DEPDIR)/test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wolfcrypt/test/$(DEPDIR)/testsuite_testsuite_test-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wolfcrypt/user-crypto/src/$(DEPDIR)/src_libwolfssl_la-rsa.Plo@am__quote@
@@ -3278,6 +3353,20 @@ wolfcrypt/src/port/cavium/src_libwolfssl_la-cavium_nitrox.lo: wolfcrypt/src/port
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_libwolfssl_la_CPPFLAGS) $(CPPFLAGS) $(src_libwolfssl_la_CFLAGS) $(CFLAGS) -c -o wolfcrypt/src/port/cavium/src_libwolfssl_la-cavium_nitrox.lo `test -f 'wolfcrypt/src/port/cavium/cavium_nitrox.c' || echo '$(srcdir)/'`wolfcrypt/src/port/cavium/cavium_nitrox.c
 
+wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist.lo: wolfcrypt/src/port/intel/quickassist.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_libwolfssl_la_CPPFLAGS) $(CPPFLAGS) $(src_libwolfssl_la_CFLAGS) $(CFLAGS) -MT wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist.lo -MD -MP -MF wolfcrypt/src/port/intel/$(DEPDIR)/src_libwolfssl_la-quickassist.Tpo -c -o wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist.lo `test -f 'wolfcrypt/src/port/intel/quickassist.c' || echo '$(srcdir)/'`wolfcrypt/src/port/intel/quickassist.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) wolfcrypt/src/port/intel/$(DEPDIR)/src_libwolfssl_la-quickassist.Tpo wolfcrypt/src/port/intel/$(DEPDIR)/src_libwolfssl_la-quickassist.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='wolfcrypt/src/port/intel/quickassist.c' object='wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_libwolfssl_la_CPPFLAGS) $(CPPFLAGS) $(src_libwolfssl_la_CFLAGS) $(CFLAGS) -c -o wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist.lo `test -f 'wolfcrypt/src/port/intel/quickassist.c' || echo '$(srcdir)/'`wolfcrypt/src/port/intel/quickassist.c
+
+wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist_mem.lo: wolfcrypt/src/port/intel/quickassist_mem.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_libwolfssl_la_CPPFLAGS) $(CPPFLAGS) $(src_libwolfssl_la_CFLAGS) $(CFLAGS) -MT wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist_mem.lo -MD -MP -MF wolfcrypt/src/port/intel/$(DEPDIR)/src_libwolfssl_la-quickassist_mem.Tpo -c -o wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist_mem.lo `test -f 'wolfcrypt/src/port/intel/quickassist_mem.c' || echo '$(srcdir)/'`wolfcrypt/src/port/intel/quickassist_mem.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) wolfcrypt/src/port/intel/$(DEPDIR)/src_libwolfssl_la-quickassist_mem.Tpo wolfcrypt/src/port/intel/$(DEPDIR)/src_libwolfssl_la-quickassist_mem.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='wolfcrypt/src/port/intel/quickassist_mem.c' object='wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist_mem.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_libwolfssl_la_CPPFLAGS) $(CPPFLAGS) $(src_libwolfssl_la_CFLAGS) $(CFLAGS) -c -o wolfcrypt/src/port/intel/src_libwolfssl_la-quickassist_mem.lo `test -f 'wolfcrypt/src/port/intel/quickassist_mem.c' || echo '$(srcdir)/'`wolfcrypt/src/port/intel/quickassist_mem.c
+
 tests/tests_unit_test-unit.o: tests/unit.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_unit_test_CFLAGS) $(CFLAGS) -MT tests/tests_unit_test-unit.o -MD -MP -MF tests/$(DEPDIR)/tests_unit_test-unit.Tpo -c -o tests/tests_unit_test-unit.o `test -f 'tests/unit.c' || echo '$(srcdir)/'`tests/unit.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/tests_unit_test-unit.Tpo tests/$(DEPDIR)/tests_unit_test-unit.Po
@@ -3489,6 +3578,7 @@ clean-libtool:
 	-rm -rf wolfcrypt/src/.libs wolfcrypt/src/_libs
 	-rm -rf wolfcrypt/src/port/arm/.libs wolfcrypt/src/port/arm/_libs
 	-rm -rf wolfcrypt/src/port/cavium/.libs wolfcrypt/src/port/cavium/_libs
+	-rm -rf wolfcrypt/src/port/intel/.libs wolfcrypt/src/port/intel/_libs
 	-rm -rf wolfcrypt/test/.libs wolfcrypt/test/_libs
 	-rm -rf wolfcrypt/user-crypto/src/.libs wolfcrypt/user-crypto/src/_libs
 
@@ -4090,6 +4180,8 @@ distclean-generic:
 	-rm -f wolfcrypt/src/port/arm/$(am__dirstamp)
 	-rm -f wolfcrypt/src/port/cavium/$(DEPDIR)/$(am__dirstamp)
 	-rm -f wolfcrypt/src/port/cavium/$(am__dirstamp)
+	-rm -f wolfcrypt/src/port/intel/$(DEPDIR)/$(am__dirstamp)
+	-rm -f wolfcrypt/src/port/intel/$(am__dirstamp)
 	-rm -f wolfcrypt/test/$(DEPDIR)/$(am__dirstamp)
 	-rm -f wolfcrypt/test/$(am__dirstamp)
 	-rm -f wolfcrypt/user-crypto/src/$(DEPDIR)/$(am__dirstamp)
@@ -4108,7 +4200,7 @@ clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf ctaocrypt/src/$(DEPDIR) examples/client/$(DEPDIR) examples/echoclient/$(DEPDIR) examples/echoserver/$(DEPDIR) examples/sctp/$(DEPDIR) examples/server/$(DEPDIR) mcapi/$(DEPDIR) src/$(DEPDIR) sslSniffer/sslSnifferTest/$(DEPDIR) tests/$(DEPDIR) testsuite/$(DEPDIR) wolfcrypt/benchmark/$(DEPDIR) wolfcrypt/src/$(DEPDIR) wolfcrypt/src/port/arm/$(DEPDIR) wolfcrypt/src/port/cavium/$(DEPDIR) wolfcrypt/test/$(DEPDIR) wolfcrypt/user-crypto/src/$(DEPDIR)
+	-rm -rf ctaocrypt/src/$(DEPDIR) examples/client/$(DEPDIR) examples/echoclient/$(DEPDIR) examples/echoserver/$(DEPDIR) examples/sctp/$(DEPDIR) examples/server/$(DEPDIR) mcapi/$(DEPDIR) src/$(DEPDIR) sslSniffer/sslSnifferTest/$(DEPDIR) tests/$(DEPDIR) testsuite/$(DEPDIR) wolfcrypt/benchmark/$(DEPDIR) wolfcrypt/src/$(DEPDIR) wolfcrypt/src/port/arm/$(DEPDIR) wolfcrypt/src/port/cavium/$(DEPDIR) wolfcrypt/src/port/intel/$(DEPDIR) wolfcrypt/test/$(DEPDIR) wolfcrypt/user-crypto/src/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-tags
@@ -4159,7 +4251,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf ctaocrypt/src/$(DEPDIR) examples/client/$(DEPDIR) examples/echoclient/$(DEPDIR) examples/echoserver/$(DEPDIR) examples/sctp/$(DEPDIR) examples/server/$(DEPDIR) mcapi/$(DEPDIR) src/$(DEPDIR) sslSniffer/sslSnifferTest/$(DEPDIR) tests/$(DEPDIR) testsuite/$(DEPDIR) wolfcrypt/benchmark/$(DEPDIR) wolfcrypt/src/$(DEPDIR) wolfcrypt/src/port/arm/$(DEPDIR) wolfcrypt/src/port/cavium/$(DEPDIR) wolfcrypt/test/$(DEPDIR) wolfcrypt/user-crypto/src/$(DEPDIR)
+	-rm -rf ctaocrypt/src/$(DEPDIR) examples/client/$(DEPDIR) examples/echoclient/$(DEPDIR) examples/echoserver/$(DEPDIR) examples/sctp/$(DEPDIR) examples/server/$(DEPDIR) mcapi/$(DEPDIR) src/$(DEPDIR) sslSniffer/sslSnifferTest/$(DEPDIR) tests/$(DEPDIR) testsuite/$(DEPDIR) wolfcrypt/benchmark/$(DEPDIR) wolfcrypt/src/$(DEPDIR) wolfcrypt/src/port/arm/$(DEPDIR) wolfcrypt/src/port/cavium/$(DEPDIR) wolfcrypt/src/port/intel/$(DEPDIR) wolfcrypt/test/$(DEPDIR) wolfcrypt/user-crypto/src/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic \
 	maintainer-clean-local

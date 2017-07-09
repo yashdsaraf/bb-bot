@@ -38,7 +38,7 @@
     WOLFSSL_API int  wolfSSL_Debugging_ON(void);
     WOLFSSL_API void wolfSSL_Debugging_OFF(void);
 #ifdef __cplusplus
-    } 
+    }
 #endif
 
 #if defined(OPENSSL_EXTRA) || defined(DEBUG_WOLFSSL_VERBOSE)
@@ -50,6 +50,7 @@ static void* wc_error_heap;
 struct wc_error_queue {
     void*  heap; /* the heap hint used with nodes creation */
     struct wc_error_queue* next;
+    struct wc_error_queue* prev;
     char   error[WOLFSSL_MAX_ERROR_SZ];
     char   file[WOLFSSL_MAX_ERROR_SZ];
     int    value;
@@ -61,10 +62,11 @@ static struct wc_error_queue* wc_last_node;
 #endif
 
 
-#ifdef DEBUG_WOLFSSL
+
+#if defined(DEBUG_WOLFSSL)
 
 /* Set these to default values initially. */
-static wolfSSL_Logging_cb log_function = 0;
+static wolfSSL_Logging_cb log_function = NULL;
 static int loggingEnabled = 0;
 
 #endif /* DEBUG_WOLFSSL */
@@ -215,21 +217,25 @@ void WOLFSSL_LEAVE(const char* msg, int ret)
         wolfssl_log(LEAVE_LOG , buffer);
     }
 }
-
+#endif  /* DEBUG_WOLFSSL */
 
 /*
  * When using OPENSSL_EXTRA or DEBUG_WOLFSSL_VERBOSE macro then WOLFSSL_ERROR is
  * mapped to new funtion WOLFSSL_ERROR_LINE which gets the line # and function
  * name where WOLFSSL_ERROR is called at.
  */
-#if defined(OPENSSL_EXTRA) || defined(DEBUG_WOLFSSL_VERBOSE)
+#if (defined(DEBUG_WOLFSSL) || defined(WOLFSSL_NGINX)) || defined(WOLFSSL_HAPROXY)
+    #if (defined(OPENSSL_EXTRA) || defined(DEBUG_WOLFSSL_VERBOSE))
 void WOLFSSL_ERROR_LINE(int error, const char* func, unsigned int line,
             const char* file, void* usrCtx)
-#else
+    #else
 void WOLFSSL_ERROR(int error)
-#endif
+    #endif
 {
-    if (loggingEnabled) {
+    #if defined(DEBUG_WOLFSSL) && !defined(WOLFSSL_NGINX)
+    if (loggingEnabled && error != WC_PENDING_E)
+    #endif
+    {
         char buffer[80];
         #if defined(OPENSSL_EXTRA) || defined(DEBUG_WOLFSSL_VERBOSE)
             (void)usrCtx; /* a user ctx for future flexibility */
@@ -254,11 +260,13 @@ void WOLFSSL_ERROR(int error)
         #else
             sprintf(buffer, "wolfSSL error occurred, error = %d", error);
         #endif
+        #ifdef DEBUG_WOLFSSL
         wolfssl_log(ERROR_LOG , buffer);
+        #endif
     }
 }
 
-#endif  /* DEBUG_WOLFSSL */
+#endif  /* DEBUG_WOLFSSL || WOLFSSL_NGINX || WOLFSSL_HAPROXY */
 
 #if defined(OPENSSL_EXTRA) || defined(DEBUG_WOLFSSL_VERBOSE)
 /* Internal function that is called by wolfCrypt_Init() */
@@ -278,25 +286,10 @@ int wc_LoggingInit(void)
 /* internal function that is called by wolfCrypt_Cleanup */
 int wc_LoggingCleanup(void)
 {
-    if (wc_LockMutex(&debug_mutex) != 0) {
-        WOLFSSL_MSG("Lock debug mutex failed");
-        return BAD_MUTEX_E;
-    }
+    /* clear logging entries */
+    wc_ClearErrorNodes();
 
-    /* free all nodes from error queue */
-    {
-        struct wc_error_queue* current;
-        struct wc_error_queue* next;
-
-        current = (struct wc_error_queue*)wc_errors;
-        while (current != NULL) {
-            next = current->next;
-            XFREE(current, current->heap, DYNAMIC_TYPE_LOG);
-            current = next;
-        }
-    }
-
-    wc_UnLockMutex(&debug_mutex);
+    /* free mutex */
     if (wc_FreeMutex(&debug_mutex) != 0) {
         WOLFSSL_MSG("Bad Mutex free");
         return BAD_MUTEX_E;
@@ -305,10 +298,10 @@ int wc_LoggingCleanup(void)
 }
 
 
-#ifdef DEBUG_WOLFSSL
+#if defined(DEBUG_WOLFSSL) || defined(WOLFSSL_NGINX) || defined(WOLFSSL_HAPROXY)
 /* peek at an error node
  *
- * index : if -1 then the most recent node is looked at, otherwise search
+ * idx : if -1 then the most recent node is looked at, otherwise search
  *         through queue for node at the given index
  * file  : pointer to internal file string
  * reason : pointer to internal error reason
@@ -317,7 +310,7 @@ int wc_LoggingCleanup(void)
  * Returns a negative value in error case, on success returns the nodes error
  * value which is positve (absolute value)
  */
-int wc_PeekErrorNode(int index, const char **file, const char **reason,
+int wc_PeekErrorNode(int idx, const char **file, const char **reason,
         int *line)
 {
     struct wc_error_queue* err;
@@ -327,7 +320,7 @@ int wc_PeekErrorNode(int index, const char **file, const char **reason,
         return BAD_MUTEX_E;
     }
 
-    if (index < 0) {
+    if (idx < 0) {
         err = wc_last_node;
         if (err == NULL) {
             WOLFSSL_MSG("No Errors in queue");
@@ -339,7 +332,7 @@ int wc_PeekErrorNode(int index, const char **file, const char **reason,
         int i;
 
         err = (struct wc_error_queue*)wc_errors;
-        for (i = 0; i < index; i++) {
+        for (i = 0; i < idx; i++) {
             if (err == NULL) {
                 WOLFSSL_MSG("Error node not found. Bad index?");
                 wc_UnLockMutex(&debug_mutex);
@@ -424,14 +417,75 @@ int wc_AddErrorNode(int error, int line, char* buf, char* file)
         }
         else {
             wc_last_node->next = err;
+            err->prev = wc_last_node;
             wc_last_node = err;
         }
     }
 
     return 0;
 }
-#endif /* DEBUG_WOLFSSL */
 
+/* Removes the error node at the specified index.
+ * idx : if -1 then the most recent node is looked at, otherwise search
+ *         through queue for node at the given index
+ */
+void wc_RemoveErrorNode(int idx)
+{
+    struct wc_error_queue* current;
+
+    if (wc_LockMutex(&debug_mutex) != 0) {
+        WOLFSSL_MSG("Lock debug mutex failed");
+        return;
+    }
+
+    if (idx == -1)
+        current = wc_last_node;
+    else {
+        current = (struct wc_error_queue*)wc_errors;
+        for (; current != NULL && idx > 0; idx--)
+             current = current->next;
+    }
+    if (current != NULL) {
+        if (current->prev != NULL)
+            current->prev->next = current->next;
+        if (wc_last_node == current)
+            wc_last_node = current->prev;
+        if (wc_errors == current)
+            wc_errors = current->next;
+        XFREE(current, current->heap, DYNAMIC_TYPE_LOG);
+    }
+
+    wc_UnLockMutex(&debug_mutex);
+}
+
+#endif /* DEBUG_WOLFSSL || WOLFSSL_NGINX */
+
+/* Clears out the list of error nodes.
+ */
+void wc_ClearErrorNodes(void)
+{
+    if (wc_LockMutex(&debug_mutex) != 0) {
+        WOLFSSL_MSG("Lock debug mutex failed");
+        return;
+    }
+
+    /* free all nodes from error queue */
+    {
+        struct wc_error_queue* current;
+        struct wc_error_queue* next;
+
+        current = (struct wc_error_queue*)wc_errors;
+        while (current != NULL) {
+            next = current->next;
+            XFREE(current, current->heap, DYNAMIC_TYPE_LOG);
+            current = next;
+        }
+    }
+
+    wc_errors    = NULL;
+    wc_last_node = NULL;
+    wc_UnLockMutex(&debug_mutex);
+}
 
 int wc_SetLoggingHeap(void* h)
 {
