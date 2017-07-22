@@ -230,7 +230,6 @@ do
         esac
     done
     break
-    fi
 done
 unset i
 
@@ -293,21 +292,20 @@ if [ -z $NOCLEAN ]
         if [ ! -e $dir/busybox ]
             then continue
         fi
-            ui_print "Found in $dir --"
-            cd $dir
-            count=0
-            for k in $(ls | grep -v busybox)
-            do
-                if [ "$k" -ef "busybox" -o -x $k -a "`head -n 1 $k`" == "#!$dir/busybox" ]
-                    then
-                    rm -f $k
-                    count=$((count+1))
-                fi
-            done
-            rm -f busybox ssl_helper
-            [ -e $dir/busybox ] && ui_print "Could **NOT** clean BusyBox in $dir --"
-            TOTALSYMLINKS=$((TOTALSYMLINKS+count))
-        fi
+        ui_print "Found in $dir --"
+        cd $dir
+        count=0
+        for k in $(ls | grep -v busybox)
+        do
+            if [ "$k" -ef "busybox" -o -x $k -a "`head -n 1 $k`" == "#!$dir/busybox" ]
+                then
+                rm -f $k
+                count=$((count+1))
+            fi
+        done
+        rm -f busybox ssl_helper
+        [ -e $dir/busybox ] && ui_print "Could **NOT** clean BusyBox in $dir --"
+        TOTALSYMLINKS=$((TOTALSYMLINKS+count))
     done
     if [ $TOTALSYMLINKS -gt 0 ]
         then ui_print "Total applets removed => $TOTALSYMLINKS --"
