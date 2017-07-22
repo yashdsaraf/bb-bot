@@ -460,7 +460,11 @@ if [ $ONLYCLEAN -ne 1 ]
         # Only install applets which are not present in the system
         # Fixes the error of busybox applets being called instead of system's default applets
         # since magisk installs bins to /sbin which precedes /system
-        if [ "$INSTALLDIR" == "/magisk/phh/bin" ] && [ -e /system/bin/$i -o -e /system/xbin/$i ]
+        if [ "$INSTALLDIR" == "/magisk/phh/bin" ] &&
+            for dir in $POSSIBLE_CLEANDIRS
+            do
+                [ -e $dir/$i ] && break
+            done
             then continue
         fi
         ./busybox ln -s busybox $i 2>/dev/null

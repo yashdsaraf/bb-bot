@@ -7,6 +7,7 @@ branches:
       - /^v[0-9a-zA-Z\-\.]*/
 before_install:
   - openssl aes-256-cbc -K $encrypted_1a2cff5fdb56_key -iv $encrypted_1a2cff5fdb56_iv -in certificate.pem.enc -out scripts/signapk/certificate.pem -d
+  - openssl aes-256-cbc -K $encrypted_1a2cff5fdb56_key -iv $encrypted_1a2cff5fdb56_iv -in sf_private_key.enc -out scripts/sf_private_key -d
   - chmod +x scripts/*.{sh,py}
   - git config --global user.email "travis@travis-ci.org"
   - git config --global user.name "Travis"
@@ -14,8 +15,8 @@ install: scripts/install-dependencies.sh
 script: scripts/readytorock.sh
 env:
   global:
-    - VER="1.27.0-YDS"
-    - STATUS="unstable"
+    - VER="1.27.1-YDS"
+    - STATUS="stable"
     - BUILD_TAG="v${VER}-$(TZ=UTC date +'%Y%m%d%H%M')"
     - TEMP_DIR=$(mktemp -d)
   matrix:

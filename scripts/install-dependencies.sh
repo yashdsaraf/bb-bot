@@ -17,6 +17,7 @@
 
 sudo apt-get update -qq
 sudo apt-get install -qq p7zip-full realpath
+pip install -q pysftp
 
 if [[ $TO_BUILD == "boxemup" ]]
     then

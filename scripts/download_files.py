@@ -15,12 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
-import requests, sys
-from concurrent.futures import ThreadPoolExecutor
-from zipfile import ZipFile
-from os import environ, remove
-from time import sleep
+import requests
 from termcolor import colored
+
+from concurrent.futures import ThreadPoolExecutor
+from os import environ, remove
+import sys
+from time import sleep
+from zipfile import ZipFile
+
 
 token = environ['TOKEN']
 tag = environ['BUILD_TAG']
@@ -28,8 +31,8 @@ ver = environ['VER']
 slug = environ['TRAVIS_REPO_SLUG']
 url = 'https://api.github.com/repos/{:s}/releases/tags/{:s}'.format(slug, tag)
 
-auth = (slug.split('/')[0],token) #Github username and OAuth token
-archs = ('ARM','X86','MIPS')
+auth = (slug.split('/')[0], token) #Github username and OAuth token
+archs = ('ARM', 'X86', 'MIPS')
 
 def download(arch):
     file = 'Busybox-' + ver + '-' + arch + '.zip'

@@ -18,19 +18,23 @@ ui_print() {
 
 error() {
     local ERRSTAT=$?
-    if [ $ERRSTAT -ne 0 ]
-        then
-        ui_print "  "
-        ui_print " ***Abort!!*** "
-        ui_print "Cause: $1"
-        [ ! -z $LOGFILE ] && ui_print "Check $LOGFILE for errors"
-        if [ $INSTALLDIR != "none" -a -d $INSTALLDIR/tmp.bbxyds ]
-            then rm -rf $INSTALLDIR/tmp.bbxyds
-        fi
-        [ "$_mounted" == "no" ] && umount /system
-        exit "$ERRSTAT"
-    else sleep 0.5
+    if [ $ERRSTAT -eq 0 ]
+        then sleep 0.5
+        return
     fi
+    ui_print "  "
+    ui_print " ***Abort!!*** "
+    ui_print "Cause: $1"
+    if [ ! -z $LOGFILE ]
+        then ui_print "Check $LOGFILE for errors"
+    fi
+    if [ $INSTALLDIR != "none" -a -d $INSTALLDIR/tmp.bbxyds ]
+        then rm -rf $INSTALLDIR/tmp.bbxyds
+    fi
+    if [ "$_mounted" == "no" ]
+        then umount /system
+    fi
+    exit "$ERRSTAT"
 }
 
 is_mounted() {
@@ -53,21 +57,22 @@ mount_systemless () {
     LOOPDEVICE=
     for LOOP in 0 1 2 3 4 5 6 7
     do
-        if (! is_mounted $2)
-            then LOOPDEVICE=/dev/block/loop$LOOP
-            if [ ! -f "$LOOPDEVICE" ]
-                then mknod $LOOPDEVICE b 7 $LOOP
-            fi
-            losetup $LOOPDEVICE $1
-            if [ "$?" -eq "0" ]
-                then
-                mount_ -t ext4 -o loop $LOOPDEVICE $2
-            fi
-            if (is_mounted $2)
-                then
-                echo $LOOPDEVICE
-                return 0
-            fi
+        if (is_mounted $2)
+            then break
+        fi
+        LOOPDEVICE=/dev/block/loop$LOOP
+        if [ ! -f "$LOOPDEVICE" ]
+            then mknod $LOOPDEVICE b 7 $LOOP
+        fi
+        losetup $LOOPDEVICE $1
+        if [ "$?" -eq "0" ]
+            then
+            mount_ -t ext4 -o loop $LOOPDEVICE $2
+        fi
+        if (is_mounted $2)
+            then
+            echo $LOOPDEVICE
+            return 0
         fi
     done
     return 1
@@ -84,8 +89,8 @@ set_permissions() {
 }
 
 #embedded mode support
-readlink /proc/$$/fd/$OPFD 2>/dev/null | grep /tmp >/dev/null
-if [ "$?" -eq "0" ]
+
+if readlink /proc/$$/fd/$OPFD 2>/dev/null | grep /tmp >/dev/null
     then
     OPFD=0
     for FD in `ls /proc/$$/fd`
@@ -167,8 +172,8 @@ do
 done
 unset i
 
-[ "$ARCH" == "none" ] &&
-    error "Unknown architecture detected"
+[ "$ARCH" != "none" ]
+error "Unknown architecture detected"
 
 # Temporary hack around for aarch64 segfaulting bb
 if [ "$ARCH" == "arm" -a "$BBFILE" == "busybox64" ]
@@ -189,48 +194,49 @@ fi
 # Read and parse bbx.conf if present
 for i in /sdcard /data /cache
 do
-    if [ -f $i/bbx.conf ]
+    if [ ! -f $i/bbx.conf ]
         then
-        ui_print "Found $i/bbx.conf --"
-        for line in `cat $i/bbx.conf`
-        do
-            option=${line%=*}
-            value=${line#*=}
-            case $option in
-                selinux)
-                    case $value in
-                        0) SELSTAT="DISABLED (user override)"
-                        ;;
-                        1) SELSTAT="ENABLED (user override)"
-                        ;;
-                        *) ui_print "Invalid option set for 'selinux' => $value (should be 0 or 1)"
-                        ;;
-                    esac
-                ;;
-                noclean)
-                    NOCLEAN=1
-                ;;
-                installdir)
-                    if ! [ -z $value ]
-                        then
-                        if ! [ -e $value ]
-                            then mkdir $value
-                            error "Error while creating $value"
-                            set_permissions $value 0755 0 0 u:object_r:system_file:s0
-                            INSTALLDIR=$value
-                        elif ! [ -d $value -a -w $value ]
-                            then ui_print "Directory not accessible => $value"
-                        else INSTALLDIR=$value
-                        fi
-                    else ui_print "Installation directory cannot be empty"
-                    fi
-                ;;
-                *) ui_print "Invalid entry in config => $option"
-                ;;
-            esac
-        done
-        break
+        continue
     fi
+    ui_print "Found $i/bbx.conf --"
+    for line in `cat $i/bbx.conf`
+    do
+        option=${line%=*}
+        value=${line#*=}
+        case $option in
+            selinux)
+                case $value in
+                    0) SELSTAT="DISABLED (user override)"
+                    ;;
+                    1) SELSTAT="ENABLED (user override)"
+                    ;;
+                    *) ui_print "Invalid option set for 'selinux' => $value (should be 0 or 1)"
+                    ;;
+                esac
+            ;;
+            noclean)
+                NOCLEAN=1
+            ;;
+            installdir)
+                if [ -z $value ]
+                    then ui_print "Installation directory cannot be empty"
+                    continue
+                fi
+                if ! [ -e $value ]
+                    then mkdir $value
+                    error "Error while creating $value"
+                    set_permissions $value 0755 0 0 u:object_r:system_file:s0
+                    INSTALLDIR=$value
+                elif ! [ -d $value -a -w $value ]
+                    then ui_print "Directory not accessible => $value"
+                else INSTALLDIR=$value
+                fi
+            ;;
+            *) ui_print "Invalid entry in config => $option"
+            ;;
+        esac
+    done
+    break
 done
 unset i
 
@@ -250,11 +256,16 @@ MAGISK=$(
     ls /data/magisk.img || ls /cache/magisk.img
 ) 2>/dev/null
 
-if ! [ -z "$SUIMG" -a -z "$MAGISK" ]
-    then
-    ui_print "Systemless root detected --"
-    [ -z "$SUIMG" ] || SULOOPDEV=$(mount_systemless $SUIMG "/su")
-    [ -z "$MAGISK" ] || MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
+if [ ! -z "$SUIMG" ]
+    then SULOOPDEV=$(mount_systemless $SUIMG "/su")
+fi
+
+if [ ! -z "$MAGISK" ]
+    then MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
+fi
+
+if ! [ -z "$SULOOPDEV" -a -z "$MAGISKLOOPDEV" ]
+    then ui_print "Systemless root detected --"
 fi
 
 POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin /system/vendor/bin /vendor/bin"
@@ -285,23 +296,23 @@ if [ -z $NOCLEAN ]
     POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/bin /system/vendor/bin $USER_INSTALLDIR"
     for dir in $POSSIBLE_CLEANDIRS
     do
-        if [ -e $dir/busybox ]
-            then
-            ui_print "Found in $dir --"
-            cd $dir
-            count=0
-            for k in $(ls | grep -v busybox)
-            do
-                if [ "$k" -ef "busybox" -o -x $k -a "`head -n1 $k`" == "#!$dir/busybox" ]
-                    then
-                    rm -f $k
-                    count=$((count+1))
-                fi
-            done
-            rm -f busybox ssl_helper
-            [ -e $dir/busybox ] && ui_print "Could **NOT** clean BusyBox in $dir --"
-            TOTALSYMLINKS=$((TOTALSYMLINKS+count))
+        if [ ! -e $dir/busybox ]
+            then continue
         fi
+        ui_print "Found in $dir --"
+        cd $dir
+        count=0
+        for k in $(ls | grep -v busybox)
+        do
+            if [ "$k" -ef "busybox" -o -x $k -a "`head -n1 $k`" == "#!$dir/busybox" ]
+                then
+                rm -f $k
+                count=$((count+1))
+            fi
+        done
+        rm -f busybox ssl_helper
+        [ -e $dir/busybox ] && ui_print "Could **NOT** clean BusyBox in $dir --"
+        TOTALSYMLINKS=$((TOTALSYMLINKS+count))
     done
     if [ $TOTALSYMLINKS -gt 0 ]
         then ui_print "Total applets removed => $TOTALSYMLINKS --"
@@ -340,7 +351,11 @@ do
     # Only install applets which are not present in the system
     # Fixes the error of busybox applets being called instead of system's default applets
     # since magisk installs bins to /sbin which precedes /system
-    if [ $INSTALLDIR == "/magisk/phh/bin" ] && [ -e /system/bin/$i -o -e /system/xbin/$i ]
+    if [ $INSTALLDIR == "/magisk/phh/bin" ] &&
+        for dir in $POSSIBLE_CLEANDIRS
+        do
+            [ -e $dir/$i ] && break
+        done
         then continue
     fi
     ./busybox ln -s busybox $i 2>/dev/null

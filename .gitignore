@@ -1,6 +1,8 @@
+scripts/misc
 busybox/
 out/**
 bbx/out/**
+scripts/misc
 bbx/workspace/**
 bbx/Bins/*/**
 !bbx/Bins/*/xzdec

@@ -33,5 +33,6 @@ else
     ./createtgz.sh
 fi
 ./mkzip.sh
+./sourceforge-release.py
 echo "Files to deploy --"
 ls -lh ../bbx/out/*
