@@ -1,3 +1,4 @@
+scripts/misc
 busybox/
 out/**
 bbx/out/**
