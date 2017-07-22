@@ -18,11 +18,11 @@
 import requests
 from termcolor import colored
 
-import sys
-from os import environ, remove
-from zipfile import ZipFile
-from time import sleep
 from concurrent.futures import ThreadPoolExecutor
+from os import environ, remove
+import sys
+from time import sleep
+from zipfile import ZipFile
 
 
 token = environ['TOKEN']
