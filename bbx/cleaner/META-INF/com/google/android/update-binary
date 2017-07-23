@@ -107,10 +107,11 @@ echo "#`date`
 #Ignore umount errors!" > $LOGFILE
 exec 2>>$LOGFILE
 
-ui_print "============================="
-ui_print "       BusyBox Cleaner       "
-ui_print "    --by YashdSaraf@XDA--    "
-ui_print "============================="
+ui_print "================================================"
+ui_print "                BusyBox Cleaner         "
+ui_print "-- by @YashdSaraf https://xda-developers.com --"
+ui_print "      ----- http://bit.ly/bbxyds -----   "
+ui_print "==============================================="
 ui_print "  "
 sleep 1
 
@@ -149,9 +150,7 @@ unset i
 SUIMG=$(
     ls /data/su.img || ls /cache/su.img
 ) 2>/dev/null
-MAGISK=$(
-    ls /data/magisk.img || ls /cache/magisk.img
-) 2>/dev/null
+MAGISK=$(ls /data/magisk.img) 2>/dev/null
 
 if ! [ -z "$SUIMG" -a -z "$MAGISK" ]
     then
@@ -186,6 +185,10 @@ done
 if [ $TOTALSYMLINKS -gt 0 ]
     then ui_print "Total applets removed => $TOTALSYMLINKS --"
     ui_print "  "
+fi
+
+if [ -d /magisk/bbxyds/system/xbin ]
+    then touch /magisk/bbxyds/remove
 fi
 
 # cd to the root directory to avoid "device or resource busy" errors while unmounting 
