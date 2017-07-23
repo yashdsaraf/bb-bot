@@ -45,10 +45,13 @@ i=$TO_BUILD
 
 # echo -e "\\n$i\\n"
 echo "Zipping files --"
-cp ../addusergroup.sh ../88-busybox.sh .
+cp ../addusergroup.sh ../88-busybox.sh ../module.prop .
+sed -i -e "s|^version=.*|version=v$VER|;s|^versionCode=.*|versionCode=$(date +%s)|"\
+     module.prop
 if [[ $i == "boxemup" ]]
     then
     cp -r ../AIO/META-INF .
+    cat ../common_install_code.sh >> META-INF/com/google/android/update-binary
     sed -i -e "s|^STATUS=.*|STATUS=\"$STATUS\"|;s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|"\
      META-INF/com/google/android/update-binary
     for i in arm x86 mips
@@ -62,6 +65,7 @@ else
     ARCH=${i% *}
     ARCH64=${i#* }
     cp -r ../META-INF ../Bins/$ARCH/* .
+    cat ../common_install_code.sh >> META-INF/com/google/android/update-binary
     sed -i -e "s|^ARCH=.*|ARCH=$ARCH|;s|^ARCH64=.*|ARCH64=$ARCH64|;s|^STATUS=.*|STATUS=\"$STATUS\"|;\
     s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|" META-INF/com/google/android/update-binary $SCRIPTDIR/SEE.template
     mkzip $VER-$(tr 'a-z' 'A-Z' <<< $ARCH)

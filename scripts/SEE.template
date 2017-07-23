@@ -268,7 +268,8 @@ fi
 
 echo "================================================"
 echo "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
-echo "         -----by YashdSaraf@XDA-----            "
+echo "-- by @YashdSaraf https://xda-developers.com --"
+echo "      ----- http://bit.ly/bbxyds -----   "
 echo "================================================"
 echo "  "
 
@@ -348,9 +349,27 @@ error "Error while extracting busybox"
 set_permissions $BBX 0555 0 2000 u:object_r:system_file:s0
 BBX=$BBTEMP/$BBX
 
-POSSIBLE_INSTALLDIRS="/su/xbin /magisk/phh/bin /system/xbin /system/vendor/xbin /vendor/xbin"
+POSSIBLE_INSTALLDIRS="/su/xbin /system/xbin /system/vendor/xbin /vendor/xbin"
 if [ $INSTALLDIR == "none" ]
     then
+    if [ -f /data/magisk.img ]
+        then
+        echo "  "
+        echo "** Your device seems to have magisk installed!"
+        echo "If you would like to install busybox as a magisk module,"
+        echo " then please use the flashable zips instead"
+        echo "(they can be installed directly via Magisk Manager) **"
+        echo "For more info visit: http://bit.ly/bbxyds"
+        echo " "
+        echo "Would you like to continue (Y/n) --"
+        read enter
+        case "$enter" in
+            n|no) $sysro
+                exit 0
+                ;;
+        esac
+        echo "  "
+    fi
     for dir in $POSSIBLE_INSTALLDIRS
     do
         if [ -d $dir -a -w $dir ]
@@ -412,6 +431,17 @@ if [ $NOCLEAN -ne 1 ]
             TOTALSYMLINKS=$((TOTALSYMLINKS+count))
         fi
     done
+    if [ -d /magisk/bbxyds -a $INSTALLDIR != "/magisk/bbxyds/system/xbin" ]
+        then
+        if [ -f /magisk/bbxyds/update ]
+            then rm /magisk/bbxyds/update
+        fi
+        touch /magisk/bbxyds/remove
+        echo "  "
+        echo "** Warning: Magisk busybox installation has been marked for cleaning **"
+        echo "Please reboot your device to remove Magisk busybox"
+        echo "  "
+    fi
     if [ $TOTALSYMLINKS -gt 0 ]
         then echo "Total applets removed => $TOTALSYMLINKS --"
         echo "  "
