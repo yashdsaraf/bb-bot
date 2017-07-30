@@ -73,8 +73,7 @@ if (which trap || type trap) >/dev/null 2>&1
 fi
 
 mount_() {
-    ( toolbox mount $* ||
-    toybox mount $* || busybox mount $* || return 1 ) >/dev/null 2>&1
+    ( mount $* || toolbox mount $* || toybox mount $* || return 1 ) >/dev/null 2>&1
 }
 
 sysrw="mount_ -o rw,remount -t auto /system"

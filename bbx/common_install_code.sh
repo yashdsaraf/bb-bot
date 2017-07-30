@@ -56,11 +56,11 @@ is_mounted() {
 }
 
 mount_() {
-    /sbin/mount $* || toolbox mount $* ||
-    toybox mount $* || return 1
+    ( mount $* || /sbin/mount $* || toolbox mount $* ||
+        toybox mount $* || return 1 ) >/dev/null 2>&1
 }
 
-mount_systemless () {
+mount_systemless() {
     #Following code to mount su.img is borrowed from supersu update-binary
     if [ ! -d $2 ]
         then
@@ -78,7 +78,7 @@ mount_systemless () {
             losetup $LOOPDEVICE $1
             if [ "$?" -eq "0" ]
                 then
-                mount_ -t ext4 -o loop $LOOPDEVICE $2 2>/dev/null
+                mount_ -t ext4 -o loop $LOOPDEVICE $2
             fi
             if (is_mounted $2)
                 then
@@ -119,7 +119,7 @@ if readlink /proc/$$/fd/$OPFD 2>/dev/null | grep /tmp >/dev/null
     done
 fi
 
-mount_ /data 2>/dev/null
+mount_ /data
 
 #Redirect all errors to LOGFILE
 for partition in /sdcard /data /cache
@@ -146,11 +146,11 @@ ui_print_ "Mounting /system --"
 
 if (is_mounted /system)
     then
-    mount_ -o rw,remount -t auto /system 2>/dev/null
+    mount_ -o rw,remount -t auto /system
     error "Error while mounting /system"
     _mounted="yes"
 else
-    mount_ -o rw -t auto /system 2>/dev/null
+    mount_ -o rw -t auto /system
     error "Error while mounting /system"
     _mounted="no"
 fi

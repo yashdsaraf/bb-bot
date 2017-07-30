@@ -15,21 +15,25 @@
 # You should have received a copy of the GNU General Public License
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
-#FLASHABLE ZIP CREATOR
+# FLASHABLE ZIP CREATION
 SCRIPTDIR=$(realpath `dirname $0`)
 SIGNAPKDIR=$SCRIPTDIR/signapk
 cd "$SCRIPTDIR/../bbx"
-# ZIPALIGN=~/opt/android-sdk-linux/build-tools/25.0.2/zipalign
-PEM=$SIGNAPKDIR/testkey.x509.pem
-PK8=$SIGNAPKDIR/testkey.pk8
-SIGNAPKJAR=$SIGNAPKDIR/signapk.jar #Provided by @mfonville and @TheCrazyLex
+PEM=$SIGNAPKDIR/certificate.pem
+PK8=$SIGNAPKDIR/key.pk8
+SIGNAPKJAR=$SIGNAPKDIR/signapk.jar # Provided by https://github.com/appium/sign
+# Provided by https://github.com/omnirom/android_packages_apps_OpenDelta
+ZIPADJUST=$SIGNAPKDIR/zipadjust
+MINSIGNAPKJAR=$SIGNAPKDIR/minsignapk.jar
 
 mkzip() {
     ZIPNAME="Busybox-$1.zip"
     7za a -tzip -mx=0 $ZIPNAME * >/dev/null
     # $ZIPALIGN -f -v 4 $ZIPNAME $ZIPNAME.aligned
     # mv -fv $ZIPNAME.aligned $ZIPNAME
-    java -Djava.library.path=$SIGNAPKDIR -jar $SIGNAPKJAR -w $PEM $PK8 $ZIPNAME $ZIPNAME.signed
+    java -jar $SIGNAPKJAR $PEM $PK8 $ZIPNAME $ZIPNAME.signed
+    $ZIPADJUST $ZIPNAME.signed $ZIPNAME
+    java -jar $MINSIGNAPKJAR $PEM $PK8 $ZIPNAME $ZIPNAME.signed
     mv $ZIPNAME.signed ../out/$ZIPNAME
     rm $ZIPNAME
 }

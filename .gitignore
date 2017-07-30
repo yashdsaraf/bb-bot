@@ -6,4 +6,4 @@ scripts/misc
 bbx/workspace/**
 bbx/Bins/*/**
 !bbx/Bins/*/xzdec
-scripts/signapk/certificate.pem
+files.tar
