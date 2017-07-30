@@ -62,10 +62,11 @@ mount_() {
 
 mount_systemless() {
     #Following code to mount su.img is borrowed from supersu update-binary
+    mkdir -p $2
+    chmod 755 $2
     if [ ! -d $2 ]
         then
-        mkdir $2 2>/dev/null
-        chmod 755 $2
+        return
     fi
     LOOPDEVICE=
     for LOOP in 0 1 2 3 4 5 6 7
