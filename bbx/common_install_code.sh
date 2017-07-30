@@ -463,7 +463,6 @@ fi
 # cd to the root directory to avoid "device or resource busy" errors while unmounting 
 cd /
 
-ui_print_ "Unmounting /system --"
 if [ ! -z $SULOOPDEV ]
     then umount /su
     losetup -d $SULOOPDEV
@@ -484,6 +483,7 @@ if $MAGISKINSTALL
 
     $BOOTMODE || recovery_cleanup
 else
+    ui_print_ "Unmounting /system --"
     umount /system
 fi
 rm -rf $INSTALLER 2>/dev/null
