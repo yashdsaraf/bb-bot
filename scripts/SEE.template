@@ -73,8 +73,7 @@ if (which trap || type trap) >/dev/null 2>&1
 fi
 
 mount_() {
-    ( toolbox mount $* ||
-    toybox mount $* || busybox mount $* || return 1 ) >/dev/null 2>&1
+    ( mount $* || toolbox mount $* || toybox mount $* || return 1 ) >/dev/null 2>&1
 }
 
 sysrw="mount_ -o rw,remount -t auto /system"
@@ -473,9 +472,6 @@ fi
 if [ $ONLYCLEAN -ne 1 ]
     then
     echo "Installing busybox to $INSTALLDIR --"
-    if [ $INSTALLDIR == "/magisk/phh/bin" ]
-        then echo "Note: A reboot is recommended when installing busybox to $INSTALLDIR"
-    fi
 
     cd $INSTALLDIR
     $BBX cp $BBX busybox
@@ -490,13 +486,12 @@ if [ $ONLYCLEAN -ne 1 ]
         # Only install applets which are not present in the system
         # Fixes the error of busybox applets being called instead of system's default applets
         # since magisk installs bins to /sbin which precedes /system
-        if [ "$INSTALLDIR" == "/magisk/phh/bin" ] &&
-            for dir in $POSSIBLE_CLEANDIRS
-            do
-                [ -e $dir/$i ] && break
-            done
-            then continue
-        fi
+        # if for dir in $POSSIBLE_CLEANDIRS
+        #     do
+        #         [ -e $dir/$i ] && break
+        #     done
+        #     then continue
+        # fi
         ./busybox ln -s busybox $i 2>/dev/null
         if [ ! -e $i ]
             then

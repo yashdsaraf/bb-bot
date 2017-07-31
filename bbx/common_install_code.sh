@@ -56,16 +56,17 @@ is_mounted() {
 }
 
 mount_() {
-    ( /sbin/mount $* || toolbox mount $* ||
-    toybox mount $* || return 1 ) 2>/dev/null
+    ( mount $* || /sbin/mount $* || toolbox mount $* ||
+        toybox mount $* || return 1 ) >/dev/null 2>&1
 }
 
-mount_systemless () {
+mount_systemless() {
     #Following code to mount su.img is borrowed from supersu update-binary
+    mkdir -p $2
+    chmod 755 $2
     if [ ! -d $2 ]
         then
-        mkdir $2 2>/dev/null
-        chmod 755 $2
+        return
     fi
     LOOPDEVICE=
     for LOOP in 0 1 2 3 4 5 6 7
@@ -119,7 +120,7 @@ if readlink /proc/$$/fd/$OPFD 2>/dev/null | grep /tmp >/dev/null
     done
 fi
 
-mount_ /data 2>/dev/null
+mount_ /data
 
 #Redirect all errors to LOGFILE
 for partition in /sdcard /data /cache
@@ -462,7 +463,6 @@ fi
 # cd to the root directory to avoid "device or resource busy" errors while unmounting 
 cd /
 
-ui_print_ "Unmounting /system --"
 if [ ! -z $SULOOPDEV ]
     then umount /su
     losetup -d $SULOOPDEV
@@ -482,8 +482,10 @@ if $MAGISKINSTALL
     fi
 
     $BOOTMODE || recovery_cleanup
+else
+    ui_print_ "Unmounting /system --"
+    umount /system
 fi
-umount /system
 rm -rf $INSTALLER 2>/dev/null
 ui_print_ "  "
 ui_print_ "All DONE! -- Check $LOGFILE for more info"
