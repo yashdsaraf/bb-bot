@@ -230,7 +230,7 @@ ui_print "Extracting files --"
 rm -rf $TMPDIR 2>/dev/null
 mkdir -p $INSTALLER
 cd $INSTALLER
-unzip_files >/dev/null
+unzip_files >>$LOGFILE 2>&1
 error "Error while extracting files"
 ui_print "Checking md5sums of extracted bins --"
 for i in $BBFILE ssl_helper xzdec
@@ -242,10 +242,12 @@ do
 done
 unset i
 set_permissions xzdec 0555 0 2000 u:object_r:system_file:s0
+set_permissions magisk_install.sh 0555 0 2000 u:object_r:system_file:s0
 ./xzdec $BBFILE > busybox
 set_permissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
 set_permissions busybox 0555 0 2000 u:object_r:system_file:s0
 rm $BBFILE xzdec
+export MAGISK_INSTALLER="sh $PWD/magisk_install.sh"
 
 SUIMG=$(
     ls /data/su.img || ls /cache/su.img
@@ -260,11 +262,24 @@ fi
 if [ -f /data/magisk.img ]
     then
     ui_print "Magisk detected --"
-    unzip -o "$BBZIP" magisk_install.sh -d $TMPDIR
-    set_permissions $TMPDIR/magisk_install.sh 0555 0 2000 u:object_r:system_file:s0
-    INSTALLDIR="$($TMPDIR/magisk_install.sh $BOOTMODE $OPFD $LOGFILE $INSTALLDIR)"
-    if [ ! -z $INSTALLDIR ]
-        then MAGISKINSTALL=true
+    ui_print "Extracting module.prop --"
+    unzip -o "$BBZIP" module.prop >/dev/null
+    error "Error while extracting files"
+    MAGISKBIN=/data/magisk
+    MOUNTPATH=/magisk
+    IMG=/data/magisk.img
+    if $BOOTMODE
+        then
+        MOUNTPATH=/dev/magisk_merge
+        IMG=/data/magisk_merge.img
+    fi
+    export MAGISKBIN MOUNTPATH IMG INSTALLER BOOTMODE INSTALLDIR LOGFILE
+    MAGISKINSTALLDIR=$($MAGISK_INSTALLER $OPFD)
+    error "Error while installing busybox using magisk"
+    if [ ! -z $MAGISKINSTALLDIR ]
+        then
+        INSTALLDIR=$MAGISKINSTALLDIR
+        MAGISKINSTALL=true
     fi
 elif $BOOTMODE
     then false
@@ -329,7 +344,7 @@ ui_print "Copying Binary to $INSTALLDIR --"
 cd $INSTALLDIR
 cp -af $INSTALLER/busybox $INSTALLER/ssl_helper .
 set_permissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
-set_permissions busybox 0555 0 2000 u:object_r:system_file:s0
+set_permissions busybox 0555 0 2000 u:object_r:system_file:s0ui
 
 ui_print "Setting up applets --"
 for i in $(./busybox --list)
@@ -355,7 +370,7 @@ cd $INSTALLER
 if [ -d /system/addon.d -a -w /system/addon.d ]
     then
     ui_print "Adding OTA survival script --"
-    ./busybox unzip -o "$BBZIP" 88-busybox.sh >/dev/null
+    ./busybox unzip -o "$BBZIP" 88-busybox.sh >>$LOGFILE 2>&1
     set_permissions 88-busybox.sh 0755 0 0 u:object_r:system_file:s0
     mv 88-busybox.sh /system/addon.d
 fi
@@ -367,7 +382,7 @@ etc=$(
 
 if [ ! -z $etc -a -d $etc -a -w $etc ]
     then
-    ./busybox unzip -o "$BBZIP" addusergroup.sh >/dev/null
+    ./busybox unzip -o "$BBZIP" addusergroup.sh >>$LOGFILE 2>&1
     . ./addusergroup.sh || ui_print "Warning: Could not add common system users and groups!"
     rm addusergroup.sh
 else ui_print "ETC directory is **NOT** accessible --"
@@ -383,18 +398,7 @@ if [ ! -z $SULOOPDEV ]
 fi
 if $MAGISKINSTALL
     then
-    $MAGISKBIN/magisk --umountimg $MOUNTPATH $MAGISKLOOP
-    rmdir $MOUNTPATH
-
-    # Shrink the image if possible
-    image_size_check $IMG
-    newSizeM=$((curUsedM / 32 * 32 + 64))
-    if [ $curSizeM -gt $newSizeM ]; then
-      ui_print "Shrinking $IMG to ${newSizeM}M --"
-      $MAGISKBIN/magisk --resizeimg $IMG $newSizeM
-    fi
-
-    $BOOTMODE || recovery_cleanup
+    $MAGISK_INSTALLER $OPFD cleanup || ui_print "Warning: Magisk cleanup failed!"
 else
     ui_print "Unmounting /system --"
     umount /system

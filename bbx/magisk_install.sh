@@ -1,20 +1,9 @@
 #!/sbin/sh
 
-BOOTMODE=$1
-OUTFD=$2
-LOGFILE=$3
-INSTALLDIR=$4
-MOUNTPATH=/magisk
-IMG=/data/magisk.img
-if $BOOTMODE
-    then
-    MOUNTPATH=/dev/magisk_merge
-    IMG=/data/magisk_merge.img
-fi
-MAGISKBIN=/data/magisk
+OUTFD=$1
 MODID=bbxyds
 
-ui_print_() {
+ui_print() {
     if $BOOTMODE
         then echo "$1"
     else
@@ -25,15 +14,25 @@ ui_print_() {
 }
 
 require_new_magisk() {
-    ui_print_ "***********************************"
-    ui_print_ "! $MAGISKBIN isn't setup properly!"
-    ui_print_ "! Please install Magisk v13.1+!"
-    ui_print_ "***********************************"
+    ui_print "***********************************"
+    ui_print "! $MAGISKBIN isn't setup properly!"
+    ui_print "! Please install Magisk v13.1+!"
+    ui_print "***********************************"
     if $BOOTMODE
         then exit 1
     else
-        ui_print_ "Falling back to normal installation --"
+        ui_print "Falling back to normal installation --"
     fi
+}
+
+log_vars() {
+    while [ ! -z $1 ]
+    do
+        name=$1
+        value="$(eval echo \$$name)"
+        echo "$name=\"$value\"" >> $INSTALLER/magisk_vars
+        shift
+    done
 }
 
 error() {
@@ -42,15 +41,39 @@ error() {
         then sleep 0.5
         return
     fi
-    ui_print_ "  "
-    ui_print_ " ***Abort!!*** "
-    ui_print_ "Cause: $1"
-    [ ! -z $LOGFILE ] && ui_print_ "Check $LOGFILE for errors"
+    ui_print "  "
+    ui_print " ***Abort!!*** "
+    ui_print "Cause: $1"
+    [ ! -z $LOGFILE ] && ui_print "Check $LOGFILE for errors"
     if [ "$_mounted" == "no" ]
         then umount /system
     fi
     exit "$ERRSTAT"
 }
+
+if [ ! -z $2 ] && [ "$2" == "cleanup" ]
+    then
+    if . $INSTALLER/magisk_vars
+        then
+        . $MAGISKBIN/util_functions.sh
+        $MAGISKBIN/magisk --umountimg $MOUNTPATH $MAGISKLOOP
+        rmdir $MOUNTPATH
+
+        # Shrink the image if possible
+        image_size_check $IMG
+        newSizeM=$((curUsedM / 32 * 32 + 64))
+        if [ $curSizeM -gt $newSizeM ]; then
+          ui_print "Shrinking $IMG to ${newSizeM}M --"
+          $MAGISKBIN/magisk --resizeimg $IMG $newSizeM
+        fi
+
+        $BOOTMODE || recovery_cleanup
+    else ui_print "Warning: Magisk cleanup failed!"
+    fi
+    rm $INSTALLER/magisk_vars
+    rm -f $0
+    exit 0
+fi
 
 if [ -d $MAGISKBIN -a -x $MAGISKBIN/magisk -a -f $MAGISKBIN/util_functions.sh ]
     then
@@ -60,10 +83,10 @@ if [ -d $MAGISKBIN -a -x $MAGISKBIN/magisk -a -f $MAGISKBIN/util_functions.sh ]
         then
         MODPATH=$MOUNTPATH/$MODID
 
-        ui_print_ "  "
-        ui_print_ "******************************"
-        ui_print_ "Powered by Magisk (@topjohnwu)"
-        ui_print_ "******************************"
+        ui_print "  "
+        ui_print "******************************"
+        ui_print "Powered by Magisk (@topjohnwu)"
+        ui_print "******************************"
 
         if $BOOTMODE
             then
@@ -71,30 +94,27 @@ if [ -d $MAGISKBIN -a -x $MAGISKBIN/magisk -a -f $MAGISKBIN/util_functions.sh ]
             error "Magisk is not activated"
         fi
 
-        ui_print_ "Extracting module.prop --"
-        unzip -o "$BBZIP" module.prop >/dev/null
-        error "Error while extracting files"
         request_size_check $INSTALLER
 
         $BOOTMODE || recovery_actions
 
         if [ -f "$IMG" ]
             then
-            ui_print_ "$IMG detected --"
+            ui_print "$IMG detected --"
             image_size_check $IMG
             if [ "$reqSizeM" -gt "$curFreeM" ]
                 then
                 newSizeM=$(((reqSizeM + curUsedM) / 32 * 32 + 64))
-                ui_print_ "Resizing $IMG to ${newSizeM}M --"
+                ui_print "Resizing $IMG to ${newSizeM}M --"
                 $MAGISKBIN/magisk --resizeimg $IMG $newSizeM
             fi
         else
             newSizeM=$((reqSizeM / 32 * 32 + 64));
-            ui_print_ "Creating $IMG with size ${newSizeM}M --"
+            ui_print "Creating $IMG with size ${newSizeM}M --"
             $MAGISKBIN/magisk --createimg $IMG $newSizeM
         fi
 
-        ui_print_ "Mounting $IMG to $MOUNTPATH --"
+        ui_print "Mounting $IMG to $MOUNTPATH --"
         MAGISKLOOP=`$MAGISKBIN/magisk --mountimg $IMG $MOUNTPATH`
         if is_mounted $MOUNTPATH
             then
@@ -117,9 +137,10 @@ if [ -d $MAGISKBIN -a -x $MAGISKBIN/magisk -a -f $MAGISKBIN/util_functions.sh ]
             then false
             error "$IMG mount failed"
         else
-            ui_print_ "*****Error while mounting $IMG to $MOUNTPATH*****"
-            ui_print_ "Falling back to normal installation --"
+            ui_print "*****Error while mounting $IMG to $MOUNTPATH*****"
+            ui_print "Falling back to normal installation --"
         fi
+        log_vars "MAGISKLOOP" "OLD_LD_PATH" "OLD_PATH" "curUsedM" "curSizeM"
     else require_new_magisk
     fi
 else require_new_magisk
