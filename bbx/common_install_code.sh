@@ -13,6 +13,23 @@ MAGISKINSTALL=false
 ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true || BOOTMODE=false
 $BOOTMODE || ps -A 2>/dev/null | grep zygote | grep -v grep >/dev/null && BOOTMODE=true
 
+# Add applets which should not be symlinked/installed to this list.
+# Separate blacklist applets using spaces.
+BLACKLISTED_APPLETS=" su "
+
+is_blacklisted() {
+    blacklisted=1
+    for blacklisted_applet in $BLACKLISTED_APPLETS
+    do
+        if [ "$1" == "$blacklisted_applet" ]
+        then
+            blacklisted=0
+            break
+        fi
+    done
+    return $blacklisted
+}
+
 ui_print() {
     if $BOOTMODE
         then echo "$1"
@@ -257,6 +274,8 @@ if [ ! -z "$SUIMG" ]
     then
     SULOOPDEV=$(mount_systemless $SUIMG "/su")
     ui_print "Systemless root detected --"
+elif [ -d /data/adb/su/xbin ]
+    then ui_print "Systemless root detected (Running in SBIN mode) --"
 fi
 
 if [ -f /data/magisk.img ]
@@ -288,7 +307,7 @@ fi
 
 ui_print "  "
 
-POSSIBLE_INSTALLDIRS="/su/xbin /system/xbin /system/vendor/bin /vendor/bin"
+POSSIBLE_INSTALLDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin"
 if [ $INSTALLDIR == "none" ]
     then
     for dir in $POSSIBLE_INSTALLDIRS
@@ -313,7 +332,7 @@ if [ -z $NOCLEAN ]
     then
     ui_print "Cleaning up older busybox versions (if any) --"
     TOTALSYMLINKS=0
-    POSSIBLE_CLEANDIRS="$USER_INSTALLDIR /system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/bin /system/vendor/bin"
+    POSSIBLE_CLEANDIRS="$USER_INSTALLDIR $POSSIBLE_INSTALLDIRS /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin"
     for dir in $POSSIBLE_CLEANDIRS
     do
         if [ ! -e $dir/busybox ]
@@ -344,27 +363,29 @@ ui_print "Copying Binary to $INSTALLDIR --"
 cd $INSTALLDIR
 cp -af $INSTALLER/busybox $INSTALLER/ssl_helper .
 set_permissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
-set_permissions busybox 0555 0 2000 u:object_r:system_file:s0ui
+set_permissions busybox 0555 0 2000 u:object_r:system_file:s0
 
 ui_print "Setting up applets --"
-for i in $(./busybox --list)
+for applet in $(./busybox --list)
 do
     # Only install applets which are not present in the system
     # Fixes the error of busybox applets being called instead of system's default applets
     # since magisk installs bins to /sbin which precedes /system
-    if $MAGISKINSTALL && $MAGISKBIN/magisk --list | grep $i >/dev/null 2>&1
+    if $MAGISKINSTALL && $MAGISKBIN/magisk --list | grep $applet >/dev/null 2>&1
         then continue
     fi
-    ./busybox ln -s busybox $i 2>/dev/null
-    if [ ! -e $i ]
+    if (is_blacklisted $applet)
+    then continue
+    fi
+    ./busybox ln -s busybox $applet 2>/dev/null
+    if [ ! -e $applet ]
         then
         #Make wrapper scripts for applets if symlinking fails
-        echo "#!$INSTALLDIR/busybox" > $i
+        echo "#!$INSTALLDIR/busybox" > $applet
         error "Error while setting up applets"
-        set_permissions $i 0555 0 2000 u:object_r:system_file:s0
+        set_permissions $applet 0555 0 2000 u:object_r:system_file:s0
     fi
 done
-unset i
 
 cd $INSTALLER
 if [ -d /system/addon.d -a -w /system/addon.d ]
