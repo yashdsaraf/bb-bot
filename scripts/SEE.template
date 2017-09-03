@@ -72,12 +72,26 @@ if (which trap || type trap) >/dev/null 2>&1
     then trap "false; error \"Ctrl-C was pressed\"" 2
 fi
 
+# Add applets which should not be symlinked/installed to this list.
+# Separate applets using a single space.
+BLACKLISTED_APPLETS=" su "
+
+is_blacklisted() {
+    blacklisted=1
+    for blacklisted_applet in $BLACKLISTED_APPLETS
+    do
+        if [ "$1" == "$blacklisted_applet" ]
+        then
+            blacklisted=0
+            break
+        fi
+    done
+    return $blacklisted
+}
+
 mount_() {
     ( mount $* || toolbox mount $* || toybox mount $* || return 1 ) >/dev/null 2>&1
 }
-
-sysrw="mount_ -o rw,remount -t auto /system"
-sysro="mount_ -o ro,remount -t auto /system"
 
 error() {
     local ERRSTAT=$?
@@ -93,7 +107,7 @@ error() {
     fi
 }
 
-check_if_exists() {
+is_installed() {
     for i in $*
     do
         echo "Checking if $i exists --"
@@ -137,6 +151,9 @@ show_help() {
                 sh <script_name> -oc --installdir=/data/local/xbin"
     [ -z $1 ] || echo "Error: $1"
 }
+
+sysrw="mount_ -o rw,remount -t auto /system"
+sysro="mount_ -o ro,remount -t auto /system"
 
 # Remount system as rw
 $sysrw
@@ -267,11 +284,11 @@ echo "      ----- http://bit.ly/bbxyds -----   "
 echo "================================================"
 echo "  "
 
-check_if_exists dd rm mkdir mount chmod chown getprop
+is_installed dd rm mkdir mount chmod chown getprop
 if [ -e /sys/fs/selinux/enforce ]
     then
     SELINUXPRESENT=1
-    check_if_exists chcon
+    is_installed chcon
 fi
 
 echo "  "
@@ -343,7 +360,7 @@ error "Error while extracting busybox"
 set_permissions $BBX 0555 0 2000 u:object_r:system_file:s0
 BBX=$BBTEMP/$BBX
 
-POSSIBLE_INSTALLDIRS="/su/xbin /system/xbin /system/vendor/xbin /vendor/xbin"
+POSSIBLE_INSTALLDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin"
 if [ $INSTALLDIR == "none" ]
     then
     if [ -f /data/magisk.img ]
@@ -351,8 +368,7 @@ if [ $INSTALLDIR == "none" ]
         echo "  "
         echo "** Your device seems to have magisk installed!"
         echo "If you would like to install busybox as a magisk module,"
-        echo " then please use the flashable zips instead"
-        echo "(they can be installed directly via Magisk Manager) **"
+        echo " then please use the flashable zips instead **"
         echo "For more info visit: http://bit.ly/bbxyds"
         echo " "
         echo "Would you like to continue (Y/n) --"
@@ -404,7 +420,7 @@ if [ $NOCLEAN -ne 1 ]
     echo "  "
     echo "Cleaning up older busybox versions (if any) --"
     TOTALSYMLINKS=0
-    POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/xbin /vendor/bin /system/vendor/bin /system/vendor/xbin $USER_INSTALLDIR"
+    POSSIBLE_CLEANDIRS="$USER_INSTALLDIR $POSSIBLE_INSTALLDIRS /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin"
     for dir in $POSSIBLE_CLEANDIRS
     do
         if [ -e $dir/busybox ]
@@ -518,6 +534,10 @@ if [ $ONLYCLEAN -ne 1 ]
     else echo "ETC directory is **NOT** accessible --"
     fi
 else echo "Skipping busybox installation (running in *onlyclean* mode) --"
+fi
+
+if [ ${INSTALLDIR:0:12} == "/data/adb/su" ]
+    then echo "**A reboot is needed when busybox is installed in $INSTALLDIR**"
 fi
 
 rm -rf $BBTEMP

@@ -14,7 +14,7 @@ ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true || BOOTMODE=false
 $BOOTMODE || ps -A 2>/dev/null | grep zygote | grep -v grep >/dev/null && BOOTMODE=true
 
 # Add applets which should not be symlinked/installed to this list.
-# Separate blacklist applets using spaces.
+# Separate applets using a single space.
 BLACKLISTED_APPLETS=" su "
 
 is_blacklisted() {

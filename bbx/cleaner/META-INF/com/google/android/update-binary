@@ -110,7 +110,7 @@ exec 2>>$LOGFILE
 ui_print "================================================"
 ui_print "                BusyBox Cleaner         "
 ui_print "-- by @YashdSaraf https://xda-developers.com --"
-ui_print "      ----- http://bit.ly/bbxyds -----   "
+ui_print "       ----- http://bit.ly/bbxyds -----   "
 ui_print "==============================================="
 ui_print "  "
 sleep 1
@@ -152,16 +152,23 @@ SUIMG=$(
 ) 2>/dev/null
 MAGISK=$(ls /data/magisk.img) 2>/dev/null
 
-if ! [ -z "$SUIMG" -a -z "$MAGISK" ]
+if [ ! -z "$SUIMG" ]
     then
+    SULOOPDEV=$(mount_systemless $SUIMG "/su")
     ui_print "Systemless root detected --"
-    [ -z "$SUIMG" ] || SULOOPDEV=$(mount_systemless $SUIMG "/su")
-    [ -z "$MAGISK" ] || MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
+elif [ -d /data/adb/su/xbin ]
+    then ui_print "Systemless root detected (Running in SBIN mode) --"
+fi
+
+if [ ! -z "$MAGISK" ]
+    then
+    ui_print "Magisk detected --"
+    MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
 fi
 
 ui_print "Cleaning up busybox --"
 TOTALSYMLINKS=0
-POSSIBLE_CLEANDIRS="/system/xbin /system/bin /su/xbin /su/bin /magisk/phh/bin /vendor/bin /system/vendor/bin $INSTALLDIR"
+POSSIBLE_CLEANDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin $INSTALLDIR"
 for dir in $POSSIBLE_CLEANDIRS
 do
     if [ -e $dir/busybox ]
@@ -208,4 +215,6 @@ if [ ! -z $MAGISKLOOPDEV ]
 fi
 umount /system
 ui_print "All DONE! -- Check $LOGFILE for more info"
-ui_print "**Uninstalling BusyBox might break some mods or apps**"
+ui_print "**************************************************"
+ui_print "Uninstalling BusyBox might break some mods or apps"
+ui_print "**************************************************"
