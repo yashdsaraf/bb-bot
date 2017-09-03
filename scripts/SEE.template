@@ -420,7 +420,7 @@ if [ $NOCLEAN -ne 1 ]
     echo "  "
     echo "Cleaning up older busybox versions (if any) --"
     TOTALSYMLINKS=0
-    POSSIBLE_CLEANDIRS="$USER_INSTALLDIR $POSSIBLE_INSTALLDIRS /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin"
+    POSSIBLE_CLEANDIRS="$USER_INSTALLDIR $POSSIBLE_INSTALLDIRS /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin /su/xbin_bind /data/adb/su/xbin_bind"
     for dir in $POSSIBLE_CLEANDIRS
     do
         if [ -e $dir/busybox ]
@@ -534,10 +534,6 @@ if [ $ONLYCLEAN -ne 1 ]
     else echo "ETC directory is **NOT** accessible --"
     fi
 else echo "Skipping busybox installation (running in *onlyclean* mode) --"
-fi
-
-if [ ${INSTALLDIR:0:12} == "/data/adb/su" ]
-    then echo "**A reboot is needed when busybox is installed in $INSTALLDIR**"
 fi
 
 rm -rf $BBTEMP

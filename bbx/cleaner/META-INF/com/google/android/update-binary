@@ -166,9 +166,9 @@ if [ ! -z "$MAGISK" ]
     MAGISKLOOPDEV=$(mount_systemless $MAGISK "/magisk")
 fi
 
-ui_print "Cleaning up busybox --"
+ui_print "Cleaning busybox --"
 TOTALSYMLINKS=0
-POSSIBLE_CLEANDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin $INSTALLDIR"
+POSSIBLE_CLEANDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin /su/xbin_bind /data/adb/su/xbin_bind $INSTALLDIR"
 for dir in $POSSIBLE_CLEANDIRS
 do
     if [ -e $dir/busybox ]

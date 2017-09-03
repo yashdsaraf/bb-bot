@@ -274,7 +274,7 @@ if [ ! -z "$SUIMG" ]
     then
     SULOOPDEV=$(mount_systemless $SUIMG "/su")
     ui_print "Systemless root detected --"
-elif [ -d /data/adb/su/xbin ]
+elif [ -d /data/adb/su ]
     then ui_print "Systemless root detected (Running in SBIN mode) --"
 fi
 
@@ -330,9 +330,9 @@ fi
 
 if [ -z $NOCLEAN ]
     then
-    ui_print "Cleaning up older busybox versions (if any) --"
+    ui_print "Cleaning older busybox versions (if any) --"
     TOTALSYMLINKS=0
-    POSSIBLE_CLEANDIRS="$USER_INSTALLDIR $POSSIBLE_INSTALLDIRS /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin"
+    POSSIBLE_CLEANDIRS="$USER_INSTALLDIR $POSSIBLE_INSTALLDIRS /data/adb/su/bin /system/bin /su/bin /magisk/phh/bin /su/xbin_bind /data/adb/su/xbin_bind"
     for dir in $POSSIBLE_CLEANDIRS
     do
         if [ ! -e $dir/busybox ]
@@ -359,7 +359,7 @@ if [ -z $NOCLEAN ]
     fi
 fi
 
-ui_print "Copying Binary to $INSTALLDIR --"
+ui_print "Copying binary to $INSTALLDIR --"
 cd $INSTALLDIR
 cp -af $INSTALLER/busybox $INSTALLER/ssl_helper .
 set_permissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
