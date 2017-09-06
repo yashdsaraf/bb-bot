@@ -3,12 +3,12 @@
 #by YashdSaraf@XDA
 
 print_banner() {
-    ui_print_ "================================================"
-    ui_print_ "   BusyBox $VER Universal ($STATUS: $DATE)      "
-    ui_print_ "-- by @YashdSaraf https://xda-developers.com --"
-    ui_print_ "      ----- http://bit.ly/bbxyds -----   "
-    ui_print_ "================================================"
-    ui_print_ "  "
+    ui_print "================================================"
+    ui_print "   BusyBox $VER Universal ($STATUS: $DATE)      "
+    ui_print "-- by @YashdSaraf https://xda-developers.com --"
+    ui_print "      ----- http://bit.ly/bbxyds -----   "
+    ui_print "================================================"
+    ui_print "  "
 }
 
 check_arch() {
@@ -22,9 +22,9 @@ check_arch() {
             if echo $FOUNDARCH | grep -E "${ARCH}(_)?64" >/dev/null 2>&1
                 then
                 BBFILE=busybox64
-                ui_print_ "** $ARCH ** 64 bit architecture detected --"
+                ui_print "** $ARCH ** 64 bit architecture detected --"
             else
-                ui_print_ "** $ARCH ** 32 bit architecture detected --"
+                ui_print "** $ARCH ** 32 bit architecture detected --"
             fi
             break
         fi
@@ -36,6 +36,6 @@ check_arch() {
 }
 
 unzip_files() {
-    unzip -o "$BBZIP" $ARCH/bins.md5 $ARCH/$BBFILE $ARCH/ssl_helper $ARCH/xzdec
+    unzip -o "$BBZIP" $ARCH/bins.md5 $ARCH/$BBFILE $ARCH/ssl_helper $ARCH/xzdec magisk_install.sh
     mv $ARCH/* .
 }

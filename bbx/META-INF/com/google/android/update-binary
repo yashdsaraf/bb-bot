@@ -6,25 +6,25 @@ ARCH=
 ARCH64=
 
 print_banner() {
-    ui_print_ "================================================"
-    ui_print_ "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
-    ui_print_ "-- by @YashdSaraf https://xda-developers.com --"
-    ui_print_ "      ----- http://bit.ly/bbxyds -----   "
-    ui_print_ "================================================"
-    ui_print_ "  "
+    ui_print "================================================"
+    ui_print "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
+    ui_print "-- by @YashdSaraf https://xda-developers.com --"
+    ui_print "      ----- http://bit.ly/bbxyds -----   "
+    ui_print "================================================"
+    ui_print "  "
 }
 
 check_arch() {
-    ui_print_ "Looking for => '$ARCH', found => '$FOUNDARCH'"
+    ui_print "Looking for => '$ARCH', found => '$FOUNDARCH'"
 
     if [ "${FOUNDARCH::${#ARCH64}}" == "$ARCH64" ]
         then
         BBFILE=busybox64
-        ui_print_ "64 bit architecture detected --"
+        ui_print "64 bit architecture detected --"
     elif [ "${FOUNDARCH::${#ARCH}}" == "$ARCH" ]
         then
         BBFILE=busybox
-        ui_print_ "32 bit architecture detected --"
+        ui_print "32 bit architecture detected --"
     else
         false
         error "Wrong architecture found"
@@ -32,5 +32,5 @@ check_arch() {
 }
 
 unzip_files() {
-    unzip -o "$BBZIP" bins.md5 $BBFILE ssl_helper xzdec
+    unzip -o "$BBZIP" bins.md5 $BBFILE ssl_helper xzdec magisk_install.sh
 }
