@@ -33,6 +33,7 @@ else
     ./createtgz.sh
 fi
 ./mkzip.sh
-./sourceforge-release.py
+# Source forge is temporarily down
+#./sourceforge-release.py
 echo "Files to deploy --"
 ls -lh ../bbx/out/*
