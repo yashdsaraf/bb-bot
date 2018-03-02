@@ -278,19 +278,27 @@ elif [ -d /data/adb/su ]
     then ui_print "Systemless root detected (Running in SBIN mode) --"
 fi
 
-if [ -f /data/magisk.img ]
+if [ -f /data/adb/magisk.img ]
+    then MAGISKDIR=/data/adb
+elif [ -f /data/magisk.img ]
+    then MAGISKDIR=/data
+else
+    MAGISKDIR=
+fi
+
+if [ ! -z $MAGISKDIR ]
     then
     ui_print "Magisk detected --"
     ui_print "Extracting module.prop --"
     unzip -o "$BBZIP" module.prop >/dev/null
     error "Error while extracting files"
-    MAGISKBIN=/data/magisk
+    MAGISKBIN=$MAGISKDIR/magisk
     MOUNTPATH=/magisk
-    IMG=/data/magisk.img
+    IMG=$MAGISKDIR/magisk.img
     if $BOOTMODE
         then
         MOUNTPATH=/dev/magisk_merge
-        IMG=/data/magisk_merge.img
+        IMG=$MAGISKDIR/magisk_merge.img
     fi
     export MAGISKBIN MOUNTPATH IMG INSTALLER BOOTMODE INSTALLDIR LOGFILE
     MAGISKINSTALLDIR=$($MAGISK_INSTALLER $OPFD)
@@ -302,7 +310,7 @@ if [ -f /data/magisk.img ]
     fi
 elif $BOOTMODE
     then false
-    error "Magisk is not installed" 
+    error "Magisk is not installed"
 fi
 
 ui_print "  "
@@ -409,7 +417,7 @@ if [ ! -z $etc -a -d $etc -a -w $etc ]
 else ui_print "ETC directory is **NOT** accessible --"
 fi
 
-# cd to the root directory to avoid "device or resource busy" errors while unmounting 
+# cd to the root directory to avoid "device or resource busy" errors while unmounting
 cd /
 
 if [ ! -z $SULOOPDEV ]
