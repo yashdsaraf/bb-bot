@@ -1,6 +1,6 @@
 /* port.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -38,11 +38,11 @@
 
 /* IPP header files for library initialization */
 #ifdef HAVE_FAST_RSA
-#include <ipp.h>
-#include <ippcp.h>
+    #include <ipp.h>
+    #include <ippcp.h>
 #endif
 
-#if defined(FREESCALE_LTC_TFM)
+#ifdef FREESCALE_LTC_TFM
     #include <wolfssl/wolfcrypt/port/nxp/ksdk_port.h>
 #endif
 
@@ -55,7 +55,13 @@
 #endif
 
 #if defined(USE_WOLFSSL_MEMORY) && defined(WOLFSSL_TRACK_MEMORY)
+    #include <wolfssl/wolfcrypt/memory.h>
     #include <wolfssl/wolfcrypt/mem_track.h>
+#endif
+
+#if defined(WOLFSSL_IMX6_CAAM) || defined(WOLFSSL_IMX6_CAAM_RNG) || \
+    defined(WOLFSSL_IMX6_CAAM_BLOB)
+    #include <wolfssl/wolfcrypt/port/caam/wolfcaam.h>
 #endif
 
 #ifdef _MSC_VER
@@ -80,7 +86,7 @@ int wolfCrypt_Init(void)
         ret = wolfAsync_HardwareStart();
         if (ret != 0) {
             WOLFSSL_MSG("Async hardware start failed");
-            return ret;
+            /* don't return failure, allow operation to continue */
         }
     #endif
 
@@ -131,7 +137,8 @@ int wolfCrypt_Init(void)
         WOLFSSL_MSG("Using ARM hardware acceleration");
     #endif
 
-    #if defined(OPENSSL_EXTRA) || defined(HAVE_WEBSERVER)
+    #if !defined(WOLFCRYPT_ONLY) && \
+        ( defined(OPENSSL_EXTRA) || defined(HAVE_WEBSERVER) )
         wolfSSL_EVP_init();
     #endif
 
@@ -149,6 +156,13 @@ int wolfCrypt_Init(void)
             return ret;
         }
     #endif
+#endif
+
+#if defined(WOLFSSL_IMX6_CAAM) || defined(WOLFSSL_IMX6_CAAM_RNG) || \
+    defined(WOLFSSL_IMX6_CAAM_BLOB)
+        if ((ret = wc_caamInit()) != 0) {
+            return ret;
+        }
 #endif
 
         initRefCount = 1;
@@ -187,6 +201,11 @@ int wolfCrypt_Cleanup(void)
         wolfAsync_HardwareStop();
     #endif
 
+    #if defined(WOLFSSL_IMX6_CAAM) || defined(WOLFSSL_IMX6_CAAM_RNG) || \
+        defined(WOLFSSL_IMX6_CAAM_BLOB)
+        wc_caamFree();
+    #endif
+
         initRefCount = 0; /* allow re-init */
     }
 
@@ -196,9 +215,10 @@ int wolfCrypt_Cleanup(void)
 #if !defined(NO_FILESYSTEM) && !defined(NO_WOLFSSL_DIR)
 
 /* File Handling Helpers */
+/* returns 0 if file found, -1 if no files or negative error */
 int wc_ReadDirFirst(ReadDirCtx* ctx, const char* path, char** name)
 {
-    int ret = 0;
+    int ret = -1; /* default to no files found */
 
     if (name)
         *name = NULL;
@@ -257,9 +277,10 @@ int wc_ReadDirFirst(ReadDirCtx* ctx, const char* path, char** name)
     return ret;
 }
 
+/* returns 0 if file found, -1 if no more files */
 int wc_ReadDirNext(ReadDirCtx* ctx, const char* path, char** name)
 {
-    int ret = -1;
+    int ret = -1; /* default to no file found */
 
     if (name)
         *name = NULL;
@@ -326,7 +347,7 @@ void wc_ReadDirClose(ReadDirCtx* ctx)
 #endif /* !NO_FILESYSTEM && !NO_WOLFSSL_DIR */
 
 
-wolfSSL_Mutex* wc_InitAndAllocMutex()
+wolfSSL_Mutex* wc_InitAndAllocMutex(void)
 {
     wolfSSL_Mutex* m = (wolfSSL_Mutex*) XMALLOC(sizeof(wolfSSL_Mutex), NULL,
             DYNAMIC_TYPE_MUTEX);
@@ -344,6 +365,59 @@ wolfSSL_Mutex* wc_InitAndAllocMutex()
     return m;
 }
 
+#ifdef USE_WOLF_STRTOK
+/* String token (delim) search. If str is null use nextp. */
+char* wc_strtok(char *str, const char *delim, char **nextp)
+{
+    char* ret;
+    int i, j;
+
+    /* Use next if str is NULL */
+    if (str == NULL && nextp)
+        str = *nextp;
+
+    /* verify str input */
+    if (str == NULL || *str == '\0')
+        return NULL;
+
+    /* match on entire delim */
+    for (i = 0; str[i]; i++) {
+        for (j = 0; delim[j]; j++) {
+            if (delim[j] == str[i])
+                break;
+        }
+        if (!delim[j])
+            break;
+    }
+    str += i;
+    /* if end of string, not found so return NULL */
+    if (*str == '\0')
+        return NULL;
+
+    ret = str;
+
+    /* match on first delim */
+    for (i = 0; str[i]; i++) {
+        for (j = 0; delim[j]; j++) {
+            if (delim[j] == str[i])
+                break;
+        }
+        if (delim[j] == str[i])
+            break;
+    }
+    str += i;
+
+    /* null terminate found string */
+    if (*str)
+        *str++ = '\0';
+
+    /* return pointer to next */
+    if (nextp)
+        *nextp = str;
+
+    return ret;
+}
+#endif /* USE_WOLF_STRTOK */
 
 #if WOLFSSL_CRYPT_HW_MUTEX
 /* Mutex for protection of cryptography hardware */
@@ -387,6 +461,39 @@ int wolfSSL_CryptHwMutexUnLock(void) {
 /* ---------------------------------------------------------------------------*/
 /* Mutex Ports */
 /* ---------------------------------------------------------------------------*/
+#if defined(OPENSSL_EXTRA) || defined(HAVE_WEBSERVER)
+    static mutex_cb*     compat_mutex_cb = NULL;
+
+    /* Function that locks or unlocks a mutex based on the flag passed in.
+     *
+     * flag lock or unlock i.e. CRYPTO_LOCK
+     * type the type of lock to unlock or lock
+     * file name of the file calling
+     * line the line number from file calling
+     */
+    int wc_LockMutex_ex(int flag, int type, const char* file, int line)
+    {
+        if (compat_mutex_cb != NULL) {
+            compat_mutex_cb(flag, type, file, line);
+            return 0;
+        }
+        else {
+            WOLFSSL_MSG("Mutex call back function not set. Call wc_SetMutexCb");
+            return BAD_STATE_E;
+        }
+    }
+
+
+    /* Set the callback function to use for locking/unlocking mutex
+     *
+     * cb callback function to use
+     */
+    int wc_SetMutexCb(mutex_cb* cb)
+    {
+        compat_mutex_cb = cb;
+        return 0;
+    }
+#endif /* defined(OPENSSL_EXTRA) || defined(HAVE_WEBSERVER) */
 #ifdef SINGLE_THREADED
 
     int wc_InitMutex(wolfSSL_Mutex* m)
@@ -586,20 +693,24 @@ int wolfSSL_CryptHwMutexUnLock(void) {
 
     int wc_InitMutex(wolfSSL_Mutex* m)
     {
-        #if (NET_SECURE_MGR_CFG_EN == DEF_ENABLED)
-            if (NetSecure_OS_MutexCreate(m) == 0)
-                return 0;
-            else
-                return BAD_MUTEX_E;
-        #else
+        OS_ERR err;
+
+        OSMutexCreate(m, "wolfSSL Mutex", &err);
+
+        if (err == OS_ERR_NONE)
             return 0;
-        #endif
+        else
+            return BAD_MUTEX_E;
     }
 
     int wc_FreeMutex(wolfSSL_Mutex* m)
     {
-        #if (NET_SECURE_MGR_CFG_EN == DEF_ENABLED)
-            if (NetSecure_OS_wc_FreeMutex(m) == 0)
+        #if (OS_CFG_MUTEX_DEL_EN == DEF_ENABLED)
+            OS_ERR err;
+
+            OSMutexDel(m, OS_OPT_DEL_ALWAYS, &err);
+
+            if (err == OS_ERR_NONE)
                 return 0;
             else
                 return BAD_MUTEX_E;
@@ -610,27 +721,26 @@ int wolfSSL_CryptHwMutexUnLock(void) {
 
     int wc_LockMutex(wolfSSL_Mutex* m)
     {
-        #if (NET_SECURE_MGR_CFG_EN == DEF_ENABLED)
-            if (NetSecure_OS_wc_LockMutex(m) == 0)
-                return 0;
-            else
-                return BAD_MUTEX_E;
-        #else
+        OS_ERR err;
+
+        OSMutexPend(m, 0, OS_OPT_PEND_BLOCKING, NULL, &err);
+
+        if (err == OS_ERR_NONE)
             return 0;
-        #endif
+        else
+            return BAD_MUTEX_E;
     }
 
     int wc_UnLockMutex(wolfSSL_Mutex* m)
     {
-        #if (NET_SECURE_MGR_CFG_EN == DEF_ENABLED)
-            if (NetSecure_OS_wc_UnLockMutex(m) == 0)
-                return 0;
-            else
-                return BAD_MUTEX_E;
-        #else
-            return 0;
-        #endif
+        OS_ERR err;
 
+        OSMutexPost(m, OS_OPT_POST_NONE, &err);
+
+        if (err == OS_ERR_NONE)
+            return 0;
+        else
+            return BAD_MUTEX_E;
     }
 
 #elif defined(EBSNET)
@@ -1114,6 +1224,212 @@ int wolfSSL_CryptHwMutexUnLock(void) {
 
 #endif
 
+#ifndef NO_ASN_TIME
+#if defined(_WIN32_WCE)
+time_t windows_time(time_t* timer)
+{
+    SYSTEMTIME     sysTime;
+    FILETIME       fTime;
+    ULARGE_INTEGER intTime;
+    time_t         localTime;
+
+    if (timer == NULL)
+        timer = &localTime;
+
+    GetSystemTime(&sysTime);
+    SystemTimeToFileTime(&sysTime, &fTime);
+
+    XMEMCPY(&intTime, &fTime, sizeof(FILETIME));
+    /* subtract EPOCH */
+    intTime.QuadPart -= 0x19db1ded53e8000;
+    /* to secs */
+    intTime.QuadPart /= 10000000;
+    *timer = (time_t)intTime.QuadPart;
+
+    return *timer;
+}
+#endif /*  _WIN32_WCE */
+
+#if defined(WOLFSSL_GMTIME)
+struct tm* gmtime(const time_t* timer)
+{
+    #define YEAR0          1900
+    #define EPOCH_YEAR     1970
+    #define SECS_DAY       (24L * 60L * 60L)
+    #define LEAPYEAR(year) (!((year) % 4) && (((year) % 100) || !((year) %400)))
+    #define YEARSIZE(year) (LEAPYEAR(year) ? 366 : 365)
+
+    static const int _ytab[2][12] =
+    {
+        {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
+        {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+    };
+
+    static struct tm st_time;
+    struct tm* ret = &st_time;
+    time_t secs = *timer;
+    unsigned long dayclock, dayno;
+    int year = EPOCH_YEAR;
+
+    dayclock = (unsigned long)secs % SECS_DAY;
+    dayno    = (unsigned long)secs / SECS_DAY;
+
+    ret->tm_sec  = (int) dayclock % 60;
+    ret->tm_min  = (int)(dayclock % 3600) / 60;
+    ret->tm_hour = (int) dayclock / 3600;
+    ret->tm_wday = (int) (dayno + 4) % 7;        /* day 0 a Thursday */
+
+    while(dayno >= (unsigned long)YEARSIZE(year)) {
+        dayno -= YEARSIZE(year);
+        year++;
+    }
+
+    ret->tm_year = year - YEAR0;
+    ret->tm_yday = (int)dayno;
+    ret->tm_mon  = 0;
+
+    while(dayno >= (unsigned long)_ytab[LEAPYEAR(year)][ret->tm_mon]) {
+        dayno -= _ytab[LEAPYEAR(year)][ret->tm_mon];
+        ret->tm_mon++;
+    }
+
+    ret->tm_mday  = (int)++dayno;
+    ret->tm_isdst = 0;
+
+    return ret;
+}
+#endif /* WOLFSSL_GMTIME */
+
+
+#if defined(HAVE_RTP_SYS)
+#define YEAR0          1900
+
+struct tm* rtpsys_gmtime(const time_t* timer)       /* has a gmtime() but hangs */
+{
+    static struct tm st_time;
+    struct tm* ret = &st_time;
+
+    DC_RTC_CALENDAR cal;
+    dc_rtc_time_get(&cal, TRUE);
+
+    ret->tm_year  = cal.year - YEAR0;       /* gm starts at 1900 */
+    ret->tm_mon   = cal.month - 1;          /* gm starts at 0 */
+    ret->tm_mday  = cal.day;
+    ret->tm_hour  = cal.hour;
+    ret->tm_min   = cal.minute;
+    ret->tm_sec   = cal.second;
+
+    return ret;
+}
+
+#endif /* HAVE_RTP_SYS */
+
+
+#if defined(MICROCHIP_TCPIP_V5) || defined(MICROCHIP_TCPIP)
+
+/*
+ * time() is just a stub in Microchip libraries. We need our own
+ * implementation. Use SNTP client to get seconds since epoch.
+ */
+time_t pic32_time(time_t* timer)
+{
+#ifdef MICROCHIP_TCPIP_V5
+    DWORD sec = 0;
+#else
+    uint32_t sec = 0;
+#endif
+    time_t localTime;
+
+    if (timer == NULL)
+        timer = &localTime;
+
+#ifdef MICROCHIP_MPLAB_HARMONY
+    sec = TCPIP_SNTP_UTCSecondsGet();
+#else
+    sec = SNTPGetUTCSeconds();
+#endif
+    *timer = (time_t) sec;
+
+    return *timer;
+}
+
+#endif /* MICROCHIP_TCPIP || MICROCHIP_TCPIP_V5 */
+
+#if defined(MICRIUM)
+
+time_t micrium_time(time_t* timer)
+{
+    CLK_TS_SEC sec;
+
+    Clk_GetTS_Unix(&sec);
+
+    return (time_t) sec;
+}
+
+#endif /* MICRIUM */
+
+#if defined(FREESCALE_MQX) || defined(FREESCALE_KSDK_MQX)
+
+time_t mqx_time(time_t* timer)
+{
+    time_t localTime;
+    TIME_STRUCT time_s;
+
+    if (timer == NULL)
+        timer = &localTime;
+
+    _time_get(&time_s);
+    *timer = (time_t) time_s.SECONDS;
+
+    return *timer;
+}
+
+#endif /* FREESCALE_MQX || FREESCALE_KSDK_MQX */
+
+
+#if defined(WOLFSSL_TIRTOS)
+
+time_t XTIME(time_t * timer)
+{
+    time_t sec = 0;
+
+    sec = (time_t) Seconds_get();
+
+    if (timer != NULL)
+        *timer = sec;
+
+    return sec;
+}
+
+#endif /* WOLFSSL_TIRTOS */
+
+#if defined(WOLFSSL_XILINX)
+#include "xrtcpsu.h"
+
+time_t XTIME(time_t * timer)
+{
+    time_t sec = 0;
+    XRtcPsu_Config* con;
+    XRtcPsu         rtc;
+
+    con = XRtcPsu_LookupConfig(XPAR_XRTCPSU_0_DEVICE_ID);
+    if (con != NULL) {
+        if (XRtcPsu_CfgInitialize(&rtc, con, con->BaseAddr) == XST_SUCCESS) {
+            sec = (time_t)XRtcPsu_GetCurrentTime(&rtc);
+        }
+        else {
+            WOLFSSL_MSG("Unable to initialize RTC");
+        }
+    }
+
+    if (timer != NULL)
+        *timer = sec;
+
+    return sec;
+}
+
+#endif /* WOLFSSL_XILINX */
+#endif /* !NO_ASN_TIME */
 
 #if defined(WOLFSSL_TI_CRYPT) || defined(WOLFSSL_TI_HASH)
     #include <wolfcrypt/src/port/ti/ti-ccm.c>  /* initialize and Mutex for TI Crypt Engine */

@@ -19,6 +19,7 @@ env:
     - STATUS="stable"
     - BUILD_TAG="v${VER}-$(TZ=UTC date +'%Y%m%d%H%M')"
     - TEMP_DIR=$(mktemp -d)
+    - PRERELEASE=$(test "$TRAVIS_BRANCH" = "master" && echo false || echo true)
   matrix:
     - TO_BUILD="boxemup"
     - TO_BUILD="arm arm64"
@@ -28,6 +29,7 @@ env:
 before_deploy: git fetch origin
 deploy:
   provider: releases
+  prerelease: $PRERELEASE
   api_key:
     secure: $TOKEN
   file_glob: true

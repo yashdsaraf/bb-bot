@@ -1,6 +1,6 @@
 /* random.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -37,7 +37,11 @@
 
  /* Maximum generate block length */
 #ifndef RNG_MAX_BLOCK_LEN
-    #define RNG_MAX_BLOCK_LEN (0x10000)
+    #ifdef HAVE_INTEL_QA
+        #define RNG_MAX_BLOCK_LEN (0xFFFF)
+    #else
+        #define RNG_MAX_BLOCK_LEN (0x10000)
+    #endif
 #endif
 
 /* Size of the BRBG seed */
@@ -46,7 +50,7 @@
 #endif
 
 
-#if defined(CUSTOM_RAND_GENERATE) && !defined(CUSTOM_RAND_TYPE)
+#if !defined(CUSTOM_RAND_TYPE)
     /* To maintain compatibility the default is byte */
     #define CUSTOM_RAND_TYPE    byte
 #endif
@@ -56,6 +60,9 @@
 #if !defined(WC_NO_HASHDRBG) || !defined(CUSTOM_RAND_GENERATE_BLOCK)
     #undef  HAVE_HASHDRBG
     #define HAVE_HASHDRBG
+    #ifndef WC_RESEED_INTERVAL
+        #define WC_RESEED_INTERVAL (1000000)
+    #endif
 #endif
 
 
@@ -125,11 +132,6 @@ typedef struct OS_Seed {
     #define WC_RNG_TYPE_DEFINED
 #endif
 
-#ifdef HAVE_HASHDRBG
-    /* Private DRBG state */
-    struct DRBG;
-#endif
-
 /* RNG context */
 struct WC_RNG {
     OS_Seed seed;
@@ -173,6 +175,8 @@ WOLFSSL_API int  wc_FreeRng(WC_RNG*);
 
 
 #ifdef HAVE_HASHDRBG
+    WOLFSSL_LOCAL int wc_RNG_DRBG_Reseed(WC_RNG* rng, const byte* entropy,
+                                        word32 entropySz);
     WOLFSSL_API int wc_RNG_HealthTest(int reseed,
                                         const byte* entropyA, word32 entropyASz,
                                         const byte* entropyB, word32 entropyBSz,

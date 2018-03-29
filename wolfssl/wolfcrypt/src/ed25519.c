@@ -1,6 +1,6 @@
 /* ed25519.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -112,10 +112,10 @@ int wc_ed25519_sign_msg(const byte* in, word32 inlen, byte* out,
 #else
     ge_p3  R;
 #endif
-    byte   nonce[SHA512_DIGEST_SIZE];    
-    byte   hram[SHA512_DIGEST_SIZE];
+    byte   nonce[WC_SHA512_DIGEST_SIZE];
+    byte   hram[WC_SHA512_DIGEST_SIZE];
     byte   az[ED25519_PRV_KEY_SIZE];
-    Sha512 sha;
+    wc_Sha512 sha;
     int    ret;
 
     /* sanity check on arguments */
@@ -193,7 +193,7 @@ int wc_ed25519_sign_msg(const byte* in, word32 inlen, byte* out,
 #else
     sc_reduce(hram);
     sc_muladd(out + (ED25519_SIG_SIZE/2), hram, az, nonce);
-#endif 
+#endif
 
     return ret;
 }
@@ -210,17 +210,17 @@ int wc_ed25519_sign_msg(const byte* in, word32 inlen, byte* out,
    res     will be 1 on successful verify and 0 on unsuccessful
    return  0 and res of 1 on success
 */
-int wc_ed25519_verify_msg(byte* sig, word32 siglen, const byte* msg,
+int wc_ed25519_verify_msg(const byte* sig, word32 siglen, const byte* msg,
                           word32 msglen, int* res, ed25519_key* key)
 {
     byte   rcheck[ED25519_KEY_SIZE];
-    byte   h[SHA512_DIGEST_SIZE];
+    byte   h[WC_SHA512_DIGEST_SIZE];
 #ifndef FREESCALE_LTC_ECC
     ge_p3  A;
     ge_p2  R;
 #endif
     int    ret;
-    Sha512 sha;
+    wc_Sha512 sha;
 
     /* sanity check on arguments */
     if (sig == NULL || msg == NULL || res == NULL || key == NULL)
@@ -234,7 +234,7 @@ int wc_ed25519_verify_msg(byte* sig, word32 siglen, const byte* msg,
         return BAD_FUNC_ARG;
 
     /* uncompress A (public key), test if valid, and negate it */
-#ifndef FREESCALE_LTC_ECC    
+#ifndef FREESCALE_LTC_ECC
     if (ge_frombytes_negate_vartime(&A, key->p) != 0)
         return BAD_FUNC_ARG;
 #endif
@@ -294,6 +294,10 @@ int wc_ed25519_init(ed25519_key* key)
         return BAD_FUNC_ARG;
 
     XMEMSET(key, 0, sizeof(ed25519_key));
+
+#ifndef FREESCALE_LTC_ECC
+    fe_init();
+#endif
 
     return 0;
 }
@@ -408,6 +412,25 @@ int wc_ed25519_import_public(const byte* in, word32 inLen, ed25519_key* key)
 
 
 /*
+    For importing a private key.
+ */
+int wc_ed25519_import_private_only(const byte* priv, word32 privSz,
+                                                               ed25519_key* key)
+{
+    /* sanity check on arguments */
+    if (priv == NULL || key == NULL)
+        return BAD_FUNC_ARG;
+
+    /* key size check */
+    if (privSz < ED25519_KEY_SIZE)
+        return BAD_FUNC_ARG;
+
+    XMEMCPY(key->k, priv, ED25519_KEY_SIZE);
+
+    return 0;
+}
+
+/*
     For importing a private key and its associated public key.
  */
 int wc_ed25519_import_private_key(const byte* priv, word32 privSz,
@@ -508,6 +531,14 @@ int wc_ed25519_export_key(ed25519_key* key,
 
 #endif /* HAVE_ED25519_KEY_EXPORT */
 
+/* check the private and public keys match */
+int wc_ed25519_check_key(ed25519_key* key)
+{
+    /* TODO: Perform check of private and public key */
+    (void)key;
+
+    return 0;
+}
 
 /* returns the private key size (secret only) in bytes */
 int wc_ed25519_size(ed25519_key* key)

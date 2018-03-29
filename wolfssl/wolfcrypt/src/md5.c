@@ -1,6 +1,6 @@
 /* md5.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -36,6 +36,7 @@
 
 #include <wolfssl/wolfcrypt/md5.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/logging.h>
 
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
@@ -46,147 +47,87 @@
 
 
 /* Hardware Acceleration */
-#if defined(STM32F2_HASH) || defined(STM32F4_HASH)
-    /*
-     * STM32F2/F4 hardware MD5 support through the standard peripheral
-     * library. (See note in README).
-     */
+#if defined(STM32_HASH)
 
-    #define HAVE_MD5_CUST_API
+    /* Supports CubeMX HAL or Standard Peripheral Library */
+	#define HAVE_MD5_CUST_API
 
-    int wc_InitMd5_ex(Md5* md5, void* heap, int devId)
+    int wc_InitMd5_ex(wc_Md5* md5, void* heap, int devId)
     {
-        (void)heap;
+        if (md5 == NULL) {
+            return BAD_FUNC_ARG;
+        }
+
         (void)devId;
+        (void)heap;
 
-        /* STM32 struct notes:
-         * md5->buffer  = first 4 bytes used to hold partial block if needed
-         * md5->buffLen = num bytes currently stored in md5->buffer
-         * md5->loLen   = num bytes that have been written to STM32 FIFO
-         */
-        XMEMSET(md5->buffer, 0, MD5_REG_SIZE);
-
-        md5->buffLen = 0;
-        md5->loLen = 0;
-
-        /* initialize HASH peripheral */
-        HASH_DeInit();
-
-        /* configure algo used, algo mode, datatype */
-        HASH->CR &= ~ (HASH_CR_ALGO | HASH_CR_DATATYPE | HASH_CR_MODE);
-        HASH->CR |= (HASH_AlgoSelection_MD5 | HASH_AlgoMode_HASH
-                 | HASH_DataType_8b);
-
-        /* reset HASH processor */
-        HASH->CR |= HASH_CR_INIT;
+        wc_Stm32_Hash_Init(&md5->stmCtx);
 
         return 0;
     }
 
-    int wc_Md5Update(Md5* md5, const byte* data, word32 len)
+    int wc_Md5Update(wc_Md5* md5, const byte* data, word32 len)
     {
-        word32 i = 0;
-        word32 fill = 0;
-        word32 diff = 0;
+        int ret;
 
-        /* if saved partial block is available */
-        if (md5->buffLen > 0) {
-            fill = 4 - md5->buffLen;
-
-            /* if enough data to fill, fill and push to FIFO */
-            if (fill <= len) {
-                XMEMCPY((byte*)md5->buffer + md5->buffLen, data, fill);
-                HASH_DataIn(*(uint32_t*)md5->buffer);
-
-                data += fill;
-                len -= fill;
-                md5->loLen += 4;
-                md5->buffLen = 0;
-            } else {
-                /* append partial to existing stored block */
-                XMEMCPY((byte*)md5->buffer + md5->buffLen, data, len);
-                md5->buffLen += len;
-                return 0;
-            }
+        if (md5 == NULL || (data == NULL && len > 0)) {
+            return BAD_FUNC_ARG;
         }
 
-        /* write input block in the IN FIFO */
-        for (i = 0; i < len; i += 4)
-        {
-            diff = len - i;
-            if (diff < 4) {
-                /* store incomplete last block, not yet in FIFO */
-                XMEMSET(md5->buffer, 0, MD5_REG_SIZE);
-                XMEMCPY((byte*)md5->buffer, data, diff);
-                md5->buffLen = diff;
-            } else {
-                HASH_DataIn(*(uint32_t*)data);
-                data+=4;
-            }
+        ret = wolfSSL_CryptHwMutexLock();
+        if (ret == 0) {
+            ret = wc_Stm32_Hash_Update(&md5->stmCtx, HASH_AlgoSelection_MD5,
+                data, len);
+            wolfSSL_CryptHwMutexUnLock();
         }
-
-        /* keep track of total data length thus far */
-        md5->loLen += (len - md5->buffLen);
-
-        return 0;
+        return ret;
     }
 
-    int wc_Md5Final(Md5* md5, byte* hash)
+    int wc_Md5Final(wc_Md5* md5, byte* hash)
     {
-        __IO uint16_t nbvalidbitsdata = 0;
+        int ret;
 
-        /* finish reading any trailing bytes into FIFO */
-        if (md5->buffLen > 0) {
-            HASH_DataIn(*(uint32_t*)md5->buffer);
-            md5->loLen += md5->buffLen;
+        if (md5 == NULL || hash == NULL) {
+            return BAD_FUNC_ARG;
         }
 
-        /* calculate number of valid bits in last word of input data */
-        nbvalidbitsdata = 8 * (md5->loLen % MD5_REG_SIZE);
+        ret = wolfSSL_CryptHwMutexLock();
+        if (ret == 0) {
+            ret = wc_Stm32_Hash_Final(&md5->stmCtx, HASH_AlgoSelection_MD5,
+                hash, WC_MD5_DIGEST_SIZE);
+            wolfSSL_CryptHwMutexUnLock();
+        }
 
-        /* configure number of valid bits in last word of the data */
-        HASH_SetLastWordValidBitsNbr(nbvalidbitsdata);
+        (void)wc_InitMd5(md5);  /* reset state */
 
-        /* start HASH processor */
-        HASH_StartDigest();
-
-        /* wait until Busy flag == RESET */
-        while (HASH_GetFlagStatus(HASH_FLAG_BUSY) != RESET) {}
-
-        /* read message digest */
-        md5->digest[0] = HASH->HR[0];
-        md5->digest[1] = HASH->HR[1];
-        md5->digest[2] = HASH->HR[2];
-        md5->digest[3] = HASH->HR[3];
-
-        ByteReverseWords(md5->digest, md5->digest, MD5_DIGEST_SIZE);
-
-        XMEMCPY(hash, md5->digest, MD5_DIGEST_SIZE);
-
-        return wc_InitMd5(md5);  /* reset state */
+        return ret;
     }
 
 #elif defined(FREESCALE_MMCAU_SHA)
     #include "cau_api.h"
     #define XTRANSFORM(S,B)  Transform((S), (B))
 
-    static int Transform(Md5* md5, byte* data)
+    static int Transform(wc_Md5* md5, byte* data)
     {
         int ret = wolfSSL_CryptHwMutexLock();
         if(ret == 0) {
+        #ifdef FREESCALE_MMCAU_CLASSIC_SHA
+            cau_md5_hash_n(data, 1, (unsigned char*)md5->digest);
+        #else
             MMCAU_MD5_HashN(data, 1, (uint32_t*)md5->digest);
+        #endif
             wolfSSL_CryptHwMutexUnLock();
         }
         return ret;
     }
 
 #elif defined(WOLFSSL_PIC32MZ_HASH)
-    #define wc_InitMd5   wc_InitMd5_sw
-    #define wc_Md5Update wc_Md5Update_sw
-    #define wc_Md5Final  wc_Md5Final_sw
+    #include <wolfssl/wolfcrypt/port/pic32/pic32mz-crypt.h>
+    #define HAVE_MD5_CUST_API
 
-    #define NEED_SOFT_MD5
-
+#elif defined(WOLFSSL_IMX6_CAAM) && !defined(NO_IMX6_CAAM_HASH)
+    /* functions implemented in wolfcrypt/src/port/caam/caam_sha.c */
+    #define HAVE_MD5_CUST_API
 #else
     #define NEED_SOFT_MD5
 
@@ -205,7 +146,7 @@
     #define MD5STEP(f, w, x, y, z, data, s) \
         w = rotlFixed(w + f(x, y, z) + data, s) + x
 
-    static int Transform(Md5* md5)
+    static int Transform(wc_Md5* md5)
     {
         /* Copy context->state[] to working vars  */
         word32 a = md5->digest[0];
@@ -291,9 +232,9 @@
     }
 #endif /* NEED_SOFT_MD5 */
 
-
 #ifndef HAVE_MD5_CUST_API
-static INLINE void AddMd5Length(Md5* md5, word32 len)
+
+static INLINE void AddLength(wc_Md5* md5, word32 len)
 {
     word32 tmp = md5->loLen;
     if ((md5->loLen += len) < tmp) {
@@ -301,7 +242,7 @@ static INLINE void AddMd5Length(Md5* md5, word32 len)
     }
 }
 
-static int _InitMd5(Md5* md5)
+static int _InitMd5(wc_Md5* md5)
 {
     int ret = 0;
 
@@ -317,7 +258,7 @@ static int _InitMd5(Md5* md5)
     return ret;
 }
 
-int wc_InitMd5_ex(Md5* md5, void* heap, int devId)
+int wc_InitMd5_ex(wc_Md5* md5, void* heap, int devId)
 {
     int ret = 0;
 
@@ -339,7 +280,7 @@ int wc_InitMd5_ex(Md5* md5, void* heap, int devId)
     return ret;
 }
 
-int wc_Md5Update(Md5* md5, const byte* data, word32 len)
+int wc_Md5Update(wc_Md5* md5, const byte* data, word32 len)
 {
     int ret = 0;
     byte* local;
@@ -360,30 +301,30 @@ int wc_Md5Update(Md5* md5, const byte* data, word32 len)
     local = (byte*)md5->buffer;
 
     /* check that internal buffLen is valid */
-    if (md5->buffLen >= MD5_BLOCK_SIZE)
+    if (md5->buffLen >= WC_MD5_BLOCK_SIZE)
         return BUFFER_E;
 
     while (len) {
-        word32 add = min(len, MD5_BLOCK_SIZE - md5->buffLen);
+        word32 add = min(len, WC_MD5_BLOCK_SIZE - md5->buffLen);
         XMEMCPY(&local[md5->buffLen], data, add);
 
         md5->buffLen += add;
         data         += add;
         len          -= add;
 
-        if (md5->buffLen == MD5_BLOCK_SIZE) {
+        if (md5->buffLen == WC_MD5_BLOCK_SIZE) {
         #if defined(BIG_ENDIAN_ORDER) && !defined(FREESCALE_MMCAU_SHA)
-            ByteReverseWords(md5->buffer, md5->buffer, MD5_BLOCK_SIZE);
+            ByteReverseWords(md5->buffer, md5->buffer, WC_MD5_BLOCK_SIZE);
         #endif
             XTRANSFORM(md5, local);
-            AddMd5Length(md5, MD5_BLOCK_SIZE);
+            AddLength(md5, WC_MD5_BLOCK_SIZE);
             md5->buffLen = 0;
         }
     }
     return ret;
 }
 
-int wc_Md5Final(Md5* md5, byte* hash)
+int wc_Md5Final(wc_Md5* md5, byte* hash)
 {
     byte* local;
 
@@ -394,28 +335,32 @@ int wc_Md5Final(Md5* md5, byte* hash)
 #if defined(WOLFSSL_ASYNC_CRYPT) && defined(WC_ASYNC_ENABLE_MD5)
     if (md5->asyncDev.marker == WOLFSSL_ASYNC_MARKER_MD5) {
     #if defined(HAVE_INTEL_QA)
-        return IntelQaSymMd5(&md5->asyncDev, hash, NULL, MD5_DIGEST_SIZE);
+        return IntelQaSymMd5(&md5->asyncDev, hash, NULL, WC_MD5_DIGEST_SIZE);
     #endif
     }
 #endif /* WOLFSSL_ASYNC_CRYPT */
 
     local = (byte*)md5->buffer;
 
-    AddMd5Length(md5, md5->buffLen);  /* before adding pads */
+    AddLength(md5, md5->buffLen);  /* before adding pads */
     local[md5->buffLen++] = 0x80;  /* add 1 */
 
     /* pad with zeros */
-    if (md5->buffLen > MD5_PAD_SIZE) {
-        XMEMSET(&local[md5->buffLen], 0, MD5_BLOCK_SIZE - md5->buffLen);
-        md5->buffLen += MD5_BLOCK_SIZE - md5->buffLen;
+    if (md5->buffLen > WC_MD5_PAD_SIZE) {
+        XMEMSET(&local[md5->buffLen], 0, WC_MD5_BLOCK_SIZE - md5->buffLen);
+        md5->buffLen += WC_MD5_BLOCK_SIZE - md5->buffLen;
 
     #if defined(BIG_ENDIAN_ORDER) && !defined(FREESCALE_MMCAU_SHA)
-        ByteReverseWords(md5->buffer, md5->buffer, MD5_BLOCK_SIZE);
+        ByteReverseWords(md5->buffer, md5->buffer, WC_MD5_BLOCK_SIZE);
     #endif
         XTRANSFORM(md5, local);
         md5->buffLen = 0;
     }
-    XMEMSET(&local[md5->buffLen], 0, MD5_PAD_SIZE - md5->buffLen);
+    XMEMSET(&local[md5->buffLen], 0, WC_MD5_PAD_SIZE - md5->buffLen);
+
+#if defined(BIG_ENDIAN_ORDER) && !defined(FREESCALE_MMCAU_SHA)
+    ByteReverseWords(md5->buffer, md5->buffer, WC_MD5_BLOCK_SIZE);
+#endif
 
     /* put lengths in bits */
     md5->hiLen = (md5->loLen >> (8*sizeof(md5->loLen) - 3)) +
@@ -423,30 +368,31 @@ int wc_Md5Final(Md5* md5, byte* hash)
     md5->loLen = md5->loLen << 3;
 
     /* store lengths */
-#if defined(BIG_ENDIAN_ORDER) && !defined(FREESCALE_MMCAU_SHA)
-    ByteReverseWords(md5->buffer, md5->buffer, MD5_BLOCK_SIZE);
-#endif
     /* ! length ordering dependent on digest endian type ! */
-    XMEMCPY(&local[MD5_PAD_SIZE], &md5->loLen, sizeof(word32));
-    XMEMCPY(&local[MD5_PAD_SIZE + sizeof(word32)], &md5->hiLen, sizeof(word32));
+    XMEMCPY(&local[WC_MD5_PAD_SIZE], &md5->loLen, sizeof(word32));
+    XMEMCPY(&local[WC_MD5_PAD_SIZE + sizeof(word32)], &md5->hiLen, sizeof(word32));
 
+    /* final transform and result to hash */
     XTRANSFORM(md5, local);
 #ifdef BIG_ENDIAN_ORDER
-    ByteReverseWords(md5->digest, md5->digest, MD5_DIGEST_SIZE);
+    ByteReverseWords(md5->digest, md5->digest, WC_MD5_DIGEST_SIZE);
 #endif
-    XMEMCPY(hash, md5->digest, MD5_DIGEST_SIZE);
+    XMEMCPY(hash, md5->digest, WC_MD5_DIGEST_SIZE);
 
     return _InitMd5(md5); /* reset state */
 }
 #endif /* !HAVE_MD5_CUST_API */
 
 
-int wc_InitMd5(Md5* md5)
+int wc_InitMd5(wc_Md5* md5)
 {
+    if (md5 == NULL) {
+        return BAD_FUNC_ARG;
+    }
     return wc_InitMd5_ex(md5, NULL, INVALID_DEVID);
 }
 
-void wc_Md5Free(Md5* md5)
+void wc_Md5Free(wc_Md5* md5)
 {
     if (md5 == NULL)
         return;
@@ -455,10 +401,10 @@ void wc_Md5Free(Md5* md5)
 #endif /* WOLFSSL_ASYNC_CRYPT */
 }
 
-int wc_Md5GetHash(Md5* md5, byte* hash)
+int wc_Md5GetHash(wc_Md5* md5, byte* hash)
 {
     int ret;
-    Md5 tmpMd5;
+    wc_Md5 tmpMd5;
 
     if (md5 == NULL || hash == NULL)
         return BAD_FUNC_ARG;
@@ -471,17 +417,20 @@ int wc_Md5GetHash(Md5* md5, byte* hash)
     return ret;
 }
 
-int wc_Md5Copy(Md5* src, Md5* dst)
+int wc_Md5Copy(wc_Md5* src, wc_Md5* dst)
 {
     int ret = 0;
 
     if (src == NULL || dst == NULL)
         return BAD_FUNC_ARG;
 
-    XMEMCPY(dst, src, sizeof(Md5));
+    XMEMCPY(dst, src, sizeof(wc_Md5));
 
 #ifdef WOLFSSL_ASYNC_CRYPT
     ret = wolfAsync_DevCopy(&src->asyncDev, &dst->asyncDev);
+#endif
+#ifdef WOLFSSL_PIC32MZ_HASH
+    ret = wc_Pic32HashCopy(&src->cache, &dst->cache);
 #endif
 
     return ret;

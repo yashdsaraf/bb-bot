@@ -1,6 +1,6 @@
 /* sha.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -33,27 +33,39 @@
 
 /* fips wrapper calls, user can call direct */
 #ifdef HAVE_FIPS
-	int wc_InitSha(Sha* sha)
-	{
-	    return InitSha_fips(sha);
-	}
-    int wc_InitSha_ex(Sha* sha, void* heap, int devId)
+    int wc_InitSha(wc_Sha* sha)
+    {
+        if (sha == NULL) {
+            return BAD_FUNC_ARG;
+        }
+        return InitSha_fips(sha);
+    }
+    int wc_InitSha_ex(wc_Sha* sha, void* heap, int devId)
     {
         (void)heap;
         (void)devId;
+        if (sha == NULL) {
+            return BAD_FUNC_ARG;
+        }
         return InitSha_fips(sha);
     }
 
-	int wc_ShaUpdate(Sha* sha, const byte* data, word32 len)
-	{
-	    return ShaUpdate_fips(sha, data, len);
-	}
-
-	int wc_ShaFinal(Sha* sha, byte* out)
-	{
-	    return ShaFinal_fips(sha,out);
+    int wc_ShaUpdate(wc_Sha* sha, const byte* data, word32 len)
+    {
+        if (sha == NULL || (data == NULL && len > 0)) {
+            return BAD_FUNC_ARG;
+        }
+        return ShaUpdate_fips(sha, data, len);
     }
-    void wc_ShaFree(Sha* sha)
+
+    int wc_ShaFinal(wc_Sha* sha, byte* out)
+    {
+        if (sha == NULL || out == NULL) {
+            return BAD_FUNC_ARG;
+        }
+        return ShaFinal_fips(sha,out);
+    }
+    void wc_ShaFree(wc_Sha* sha)
     {
         (void)sha;
         /* Not supported in FIPS */
@@ -78,146 +90,88 @@
 
 /* Hardware Acceleration */
 #if defined(WOLFSSL_PIC32MZ_HASH)
-    #define USE_SHA_SOFTWARE_IMPL
-    #define wc_InitSha   wc_InitSha_sw
-    #define wc_ShaUpdate wc_ShaUpdate_sw
-    #define wc_ShaFinal  wc_ShaFinal_sw
+    #include <wolfssl/wolfcrypt/port/pic32/pic32mz-crypt.h>
 
-#elif defined(STM32F2_HASH) || defined(STM32F4_HASH)
+#elif defined(STM32_HASH)
 
-    /*
-     * STM32F2/F4 hardware SHA1 support through the standard peripheral
-     * library. (See note in README).
-     */
-
-    static int InitSha(Sha* sha)
+    /* Supports CubeMX HAL or Standard Peripheral Library */
+    int wc_InitSha_ex(wc_Sha* sha, void* heap, int devId)
     {
-        /* STM32 struct notes:
-         * sha->buffer  = first 4 bytes used to hold partial block if needed
-         * sha->buffLen = num bytes currently stored in sha->buffer
-         * sha->loLen   = num bytes that have been written to STM32 FIFO
-         */
-        XMEMSET(sha->buffer, 0, SHA_REG_SIZE);
-        sha->buffLen = 0;
-        sha->loLen = 0;
+        if (sha == NULL) {
+            return BAD_FUNC_ARG;
+        }
 
-        /* initialize HASH peripheral */
-        HASH_DeInit();
+        (void)devId;
+        (void)heap;
 
-        /* configure algo used, algo mode, datatype */
-        HASH->CR &= ~ (HASH_CR_ALGO | HASH_CR_DATATYPE | HASH_CR_MODE);
-        HASH->CR |= (HASH_AlgoSelection_SHA1 | HASH_AlgoMode_HASH
-                     | HASH_DataType_8b);
-
-        /* reset HASH processor */
-        HASH->CR |= HASH_CR_INIT;
+        wc_Stm32_Hash_Init(&sha->stmCtx);
 
         return 0;
     }
 
-    int wc_ShaUpdate(Sha* sha, const byte* data, word32 len)
+    int wc_ShaUpdate(wc_Sha* sha, const byte* data, word32 len)
     {
-        word32 i = 0;
-        word32 fill = 0;
-        word32 diff = 0;
+        int ret;
 
-        /* if saved partial block is available */
-        if (sha->buffLen) {
-            fill = 4 - sha->buffLen;
-
-            /* if enough data to fill, fill and push to FIFO */
-            if (fill <= len) {
-                XMEMCPY((byte*)sha->buffer + sha->buffLen, data, fill);
-                HASH_DataIn(*(uint32_t*)sha->buffer);
-
-                data += fill;
-                len -= fill;
-                sha->loLen += 4;
-                sha->buffLen = 0;
-            } else {
-                /* append partial to existing stored block */
-                XMEMCPY((byte*)sha->buffer + sha->buffLen, data, len);
-                sha->buffLen += len;
-                return 0;
-            }
+        if (sha == NULL || (data == NULL && len > 0)) {
+            return BAD_FUNC_ARG;
         }
 
-        /* write input block in the IN FIFO */
-        for(i = 0; i < len; i += 4)
-        {
-            diff = len - i;
-            if ( diff < 4) {
-                /* store incomplete last block, not yet in FIFO */
-                XMEMSET(sha->buffer, 0, SHA_REG_SIZE);
-                XMEMCPY((byte*)sha->buffer, data, diff);
-                sha->buffLen = diff;
-            } else {
-                HASH_DataIn(*(uint32_t*)data);
-                data+=4;
-            }
+        ret = wolfSSL_CryptHwMutexLock();
+        if (ret == 0) {
+            ret = wc_Stm32_Hash_Update(&sha->stmCtx, HASH_AlgoSelection_SHA1,
+                data, len);
+            wolfSSL_CryptHwMutexUnLock();
         }
-
-        /* keep track of total data length thus far */
-        sha->loLen += (len - sha->buffLen);
-
-        return 0;
+        return ret;
     }
 
-    int wc_ShaFinal(Sha* sha, byte* hash)
+    int wc_ShaFinal(wc_Sha* sha, byte* hash)
     {
-        __IO uint16_t nbvalidbitsdata = 0;
+        int ret;
 
-        /* finish reading any trailing bytes into FIFO */
-        if (sha->buffLen) {
-            HASH_DataIn(*(uint32_t*)sha->buffer);
-            sha->loLen += sha->buffLen;
+        if (sha == NULL || hash == NULL) {
+            return BAD_FUNC_ARG;
         }
 
-        /* calculate number of valid bits in last word of input data */
-        nbvalidbitsdata = 8 * (sha->loLen % SHA_REG_SIZE);
+        ret = wolfSSL_CryptHwMutexLock();
+        if (ret == 0) {
+            ret = wc_Stm32_Hash_Final(&sha->stmCtx, HASH_AlgoSelection_SHA1,
+                hash, WC_SHA_DIGEST_SIZE);
+            wolfSSL_CryptHwMutexUnLock();
+        }
 
-        /* configure number of valid bits in last word of the data */
-        HASH_SetLastWordValidBitsNbr(nbvalidbitsdata);
+        (void)wc_InitSha(sha);  /* reset state */
 
-        /* start HASH processor */
-        HASH_StartDigest();
-
-        /* wait until Busy flag == RESET */
-        while (HASH_GetFlagStatus(HASH_FLAG_BUSY) != RESET) {}
-
-        /* read message digest */
-        sha->digest[0] = HASH->HR[0];
-        sha->digest[1] = HASH->HR[1];
-        sha->digest[2] = HASH->HR[2];
-        sha->digest[3] = HASH->HR[3];
-        sha->digest[4] = HASH->HR[4];
-
-        ByteReverseWords(sha->digest, sha->digest, SHA_DIGEST_SIZE);
-
-        XMEMCPY(hash, sha->digest, SHA_DIGEST_SIZE);
-
-        return wc_InitSha(sha);  /* reset state */
+        return ret;
     }
 
 
 #elif defined(FREESCALE_LTC_SHA)
 
     #include "fsl_ltc.h"
-    static int InitSha(Sha* sha)
+    int wc_InitSha_ex(wc_Sha* sha, void* heap, int devId)
     {
+        if (sha == NULL) {
+            return BAD_FUNC_ARG;
+        }
+
+        (void)devId;
+        (void)heap;
+
         LTC_HASH_Init(LTC_BASE, &sha->ctx, kLTC_Sha1, NULL, 0);
         return 0;
     }
 
-    int wc_ShaUpdate(Sha* sha, const byte* data, word32 len)
+    int wc_ShaUpdate(wc_Sha* sha, const byte* data, word32 len)
     {
         LTC_HASH_Update(&sha->ctx, data, len);
         return 0;
     }
 
-    int wc_ShaFinal(Sha* sha, byte* hash)
+    int wc_ShaFinal(wc_Sha* sha, byte* hash)
     {
-        uint32_t hashlen = SHA_DIGEST_SIZE;
+        uint32_t hashlen = WC_SHA_DIGEST_SIZE;
         LTC_HASH_Finish(&sha->ctx, hash, &hashlen);
         return wc_InitSha(sha);  /* reset state */
     }
@@ -225,18 +179,27 @@
 
 #elif defined(FREESCALE_MMCAU_SHA)
 
-    #include "fsl_mmcau.h"
-    #define USE_SHA_SOFTWARE_IMPL /* Only for API's, actual transform is here */
-    #define XSHATRANSFORM   ShaTransform
+    #ifdef FREESCALE_MMCAU_CLASSIC_SHA
+        #include "cau_api.h"
+    #else
+        #include "fsl_mmcau.h"
+    #endif
 
-    static int InitSha(Sha* sha)
+    #define USE_SHA_SOFTWARE_IMPL /* Only for API's, actual transform is here */
+    #define XTRANSFORM(S,B)   Transform((S),(B))
+
+    static int InitSha(wc_Sha* sha)
     {
         int ret = 0;
         ret = wolfSSL_CryptHwMutexLock();
-        if(ret != 0) {
+        if (ret != 0) {
             return ret;
         }
+    #ifdef FREESCALE_MMCAU_CLASSIC_SHA
+        cau_sha1_initialize_output(sha->digest);
+    #else
         MMCAU_SHA1_InitializeOutput((uint32_t*)sha->digest);
+    #endif
         wolfSSL_CryptHwMutexUnLock();
 
         sha->buffLen = 0;
@@ -246,22 +209,28 @@
         return ret;
     }
 
-    static int ShaTransform(Sha* sha, byte* data)
+    static int Transform(wc_Sha* sha, byte* data)
     {
         int ret = wolfSSL_CryptHwMutexLock();
         if(ret == 0) {
+    #ifdef FREESCALE_MMCAU_CLASSIC_SHA
+            cau_sha1_hash_n(data, 1, sha->digest);
+    #else
             MMCAU_SHA1_HashN(data, 1, (uint32_t*)sha->digest);
+    #endif
             wolfSSL_CryptHwMutexUnLock();
         }
         return ret;
     }
 
+#elif defined(WOLFSSL_IMX6_CAAM) && !defined(NO_IMX6_CAAM_HASH)
+    /* wolfcrypt/src/port/caam/caam_sha.c */
 #else
 
     /* Software implementation */
     #define USE_SHA_SOFTWARE_IMPL
 
-    static int InitSha(Sha* sha)
+    static int InitSha(wc_Sha* sha)
     {
         int ret = 0;
 
@@ -284,9 +253,16 @@
 /* Software implementation */
 #ifdef USE_SHA_SOFTWARE_IMPL
 
-/* Check if custom Sha transform is used */
-#ifndef XSHATRANSFORM
-    #define XSHATRANSFORM   ShaTransform
+static INLINE void AddLength(wc_Sha* sha, word32 len)
+{
+    word32 tmp = sha->loLen;
+    if ((sha->loLen += len) < tmp)
+        sha->hiLen++;                       /* carry low to high */
+}
+
+/* Check if custom wc_Sha transform is used */
+#ifndef XTRANSFORM
+    #define XTRANSFORM(S,B)   Transform((S),(B))
 
     #define blk0(i) (W[i] = sha->buffer[i])
     #define blk1(i) (W[(i)&15] = \
@@ -309,9 +285,9 @@
     #define R4(v,w,x,y,z,i) (z)+= f4((w),(x),(y)) + blk1((i)) + 0xCA62C1D6+ \
         rotlFixed((v),5); (w) = rotlFixed((w),30);
 
-    static void ShaTransform(Sha* sha, byte* data)
+    static void Transform(wc_Sha* sha, byte* data)
     {
-        word32 W[SHA_BLOCK_SIZE / sizeof(word32)];
+        word32 W[WC_SHA_BLOCK_SIZE / sizeof(word32)];
 
         /* Copy context->state[] to working vars */
         word32 a = sha->digest[0];
@@ -348,7 +324,7 @@
             t = e; e = d; d = c; c = b; b = a; a = t;
         }
     #else
-        /* nearly 1 K bigger in code size but 25% faster  */
+        /* nearly 1 K bigger in code size but 25% faster */
         /* 4 rounds of 20 operations each. Loop unrolled. */
         R0(a,b,c,d,e, 0); R0(e,a,b,c,d, 1); R0(d,e,a,b,c, 2); R0(c,d,e,a,b, 3);
         R0(b,c,d,e,a, 4); R0(a,b,c,d,e, 5); R0(e,a,b,c,d, 6); R0(d,e,a,b,c, 7);
@@ -388,14 +364,7 @@
 #endif /* !USE_CUSTOM_SHA_TRANSFORM */
 
 
-static INLINE void AddLength(Sha* sha, word32 len)
-{
-    word32 tmp = sha->loLen;
-    if ( (sha->loLen += len) < tmp)
-        sha->hiLen++;                       /* carry low to high */
-}
-
-int wc_InitSha_ex(Sha* sha, void* heap, int devId)
+int wc_InitSha_ex(wc_Sha* sha, void* heap, int devId)
 {
     int ret = 0;
 
@@ -418,10 +387,16 @@ int wc_InitSha_ex(Sha* sha, void* heap, int devId)
     return ret;
 }
 
-int wc_ShaUpdate(Sha* sha, const byte* data, word32 len)
+int wc_ShaUpdate(wc_Sha* sha, const byte* data, word32 len)
 {
+    byte* local;
+
+    if (sha == NULL ||(data == NULL && len > 0)) {
+        return BAD_FUNC_ARG;
+    }
+
     /* do block size increments */
-    byte* local = (byte*)sha->buffer;
+    local = (byte*)sha->buffer;
 
 #if defined(WOLFSSL_ASYNC_CRYPT) && defined(WC_ASYNC_ENABLE_SHA)
     if (sha->asyncDev.marker == WOLFSSL_ASYNC_MARKER_SHA) {
@@ -432,23 +407,23 @@ int wc_ShaUpdate(Sha* sha, const byte* data, word32 len)
 #endif /* WOLFSSL_ASYNC_CRYPT */
 
     /* check that internal buffLen is valid */
-    if (sha->buffLen >= SHA_BLOCK_SIZE)
+    if (sha->buffLen >= WC_SHA_BLOCK_SIZE)
         return BUFFER_E;
 
     while (len) {
-        word32 add = min(len, SHA_BLOCK_SIZE - sha->buffLen);
+        word32 add = min(len, WC_SHA_BLOCK_SIZE - sha->buffLen);
         XMEMCPY(&local[sha->buffLen], data, add);
 
         sha->buffLen += add;
         data         += add;
         len          -= add;
 
-        if (sha->buffLen == SHA_BLOCK_SIZE) {
+        if (sha->buffLen == WC_SHA_BLOCK_SIZE) {
 #if defined(LITTLE_ENDIAN_ORDER) && !defined(FREESCALE_MMCAU_SHA)
-            ByteReverseWords(sha->buffer, sha->buffer, SHA_BLOCK_SIZE);
+            ByteReverseWords(sha->buffer, sha->buffer, WC_SHA_BLOCK_SIZE);
 #endif
-            XSHATRANSFORM(sha, local);
-            AddLength(sha, SHA_BLOCK_SIZE);
+            XTRANSFORM(sha, local);
+            AddLength(sha, WC_SHA_BLOCK_SIZE);
             sha->buffLen = 0;
         }
     }
@@ -456,14 +431,20 @@ int wc_ShaUpdate(Sha* sha, const byte* data, word32 len)
     return 0;
 }
 
-int wc_ShaFinal(Sha* sha, byte* hash)
+int wc_ShaFinal(wc_Sha* sha, byte* hash)
 {
-    byte* local = (byte*)sha->buffer;
+    byte* local;
+
+    if (sha == NULL || hash == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    local = (byte*)sha->buffer;
 
 #if defined(WOLFSSL_ASYNC_CRYPT) && defined(WC_ASYNC_ENABLE_SHA)
     if (sha->asyncDev.marker == WOLFSSL_ASYNC_MARKER_SHA) {
     #if defined(HAVE_INTEL_QA)
-        return IntelQaSymSha(&sha->asyncDev, hash, NULL, SHA_DIGEST_SIZE);
+        return IntelQaSymSha(&sha->asyncDev, hash, NULL, WC_SHA_DIGEST_SIZE);
     #endif
     }
 #endif /* WOLFSSL_ASYNC_CRYPT */
@@ -473,43 +454,43 @@ int wc_ShaFinal(Sha* sha, byte* hash)
     local[sha->buffLen++] = 0x80;  /* add 1 */
 
     /* pad with zeros */
-    if (sha->buffLen > SHA_PAD_SIZE) {
-        XMEMSET(&local[sha->buffLen], 0, SHA_BLOCK_SIZE - sha->buffLen);
-        sha->buffLen += SHA_BLOCK_SIZE - sha->buffLen;
+    if (sha->buffLen > WC_SHA_PAD_SIZE) {
+        XMEMSET(&local[sha->buffLen], 0, WC_SHA_BLOCK_SIZE - sha->buffLen);
+        sha->buffLen += WC_SHA_BLOCK_SIZE - sha->buffLen;
 
 #if defined(LITTLE_ENDIAN_ORDER) && !defined(FREESCALE_MMCAU_SHA)
-        ByteReverseWords(sha->buffer, sha->buffer, SHA_BLOCK_SIZE);
+        ByteReverseWords(sha->buffer, sha->buffer, WC_SHA_BLOCK_SIZE);
 #endif
-        XSHATRANSFORM(sha, local);
+        XTRANSFORM(sha, local);
         sha->buffLen = 0;
     }
-    XMEMSET(&local[sha->buffLen], 0, SHA_PAD_SIZE - sha->buffLen);
+    XMEMSET(&local[sha->buffLen], 0, WC_SHA_PAD_SIZE - sha->buffLen);
 
-    /* put lengths in bits */
-    sha->hiLen = (sha->loLen >> (8*sizeof(sha->loLen) - 3)) +
-    (sha->hiLen << 3);
-    sha->loLen = sha->loLen << 3;
+#if defined(LITTLE_ENDIAN_ORDER) && !defined(FREESCALE_MMCAU_SHA)
+    ByteReverseWords(sha->buffer, sha->buffer, WC_SHA_BLOCK_SIZE);
+#endif
 
     /* store lengths */
-#if defined(LITTLE_ENDIAN_ORDER) && !defined(FREESCALE_MMCAU_SHA)
-    ByteReverseWords(sha->buffer, sha->buffer, SHA_BLOCK_SIZE);
-#endif
-    /* ! length ordering dependent on digest endian type ! */
-    XMEMCPY(&local[SHA_PAD_SIZE], &sha->hiLen, sizeof(word32));
-    XMEMCPY(&local[SHA_PAD_SIZE + sizeof(word32)], &sha->loLen, sizeof(word32));
+    /* put lengths in bits */
+    sha->hiLen = (sha->loLen >> (8*sizeof(sha->loLen) - 3)) + (sha->hiLen << 3);
+    sha->loLen = sha->loLen << 3;
 
-#ifdef FREESCALE_MMCAU_SHA
+    /* ! length ordering dependent on digest endian type ! */
+    XMEMCPY(&local[WC_SHA_PAD_SIZE], &sha->hiLen, sizeof(word32));
+    XMEMCPY(&local[WC_SHA_PAD_SIZE + sizeof(word32)], &sha->loLen, sizeof(word32));
+
+#if defined(FREESCALE_MMCAU_SHA)
     /* Kinetis requires only these bytes reversed */
-    ByteReverseWords(&sha->buffer[SHA_PAD_SIZE/sizeof(word32)],
-                     &sha->buffer[SHA_PAD_SIZE/sizeof(word32)],
+    ByteReverseWords(&sha->buffer[WC_SHA_PAD_SIZE/sizeof(word32)],
+                     &sha->buffer[WC_SHA_PAD_SIZE/sizeof(word32)],
                      2 * sizeof(word32));
 #endif
 
-    XSHATRANSFORM(sha, local);
+    XTRANSFORM(sha, local);
 #ifdef LITTLE_ENDIAN_ORDER
-    ByteReverseWords(sha->digest, sha->digest, SHA_DIGEST_SIZE);
+    ByteReverseWords(sha->digest, sha->digest, WC_SHA_DIGEST_SIZE);
 #endif
-    XMEMCPY(hash, sha->digest, SHA_DIGEST_SIZE);
+    XMEMCPY(hash, sha->digest, WC_SHA_DIGEST_SIZE);
 
     return InitSha(sha); /* reset state */
 }
@@ -517,12 +498,12 @@ int wc_ShaFinal(Sha* sha, byte* hash)
 #endif /* USE_SHA_SOFTWARE_IMPL */
 
 
-int wc_InitSha(Sha* sha)
+int wc_InitSha(wc_Sha* sha)
 {
     return wc_InitSha_ex(sha, NULL, INVALID_DEVID);
 }
 
-void wc_ShaFree(Sha* sha)
+void wc_ShaFree(wc_Sha* sha)
 {
     if (sha == NULL)
         return;
@@ -536,10 +517,10 @@ void wc_ShaFree(Sha* sha)
 #endif /* HAVE_FIPS */
 
 #ifndef WOLFSSL_TI_HASH
-int wc_ShaGetHash(Sha* sha, byte* hash)
+int wc_ShaGetHash(wc_Sha* sha, byte* hash)
 {
     int ret;
-    Sha tmpSha;
+    wc_Sha tmpSha;
 
     if (sha == NULL || hash == NULL)
         return BAD_FUNC_ARG;
@@ -551,17 +532,20 @@ int wc_ShaGetHash(Sha* sha, byte* hash)
     return ret;
 }
 
-int wc_ShaCopy(Sha* src, Sha* dst)
+int wc_ShaCopy(wc_Sha* src, wc_Sha* dst)
 {
     int ret = 0;
 
     if (src == NULL || dst == NULL)
         return BAD_FUNC_ARG;
 
-    XMEMCPY(dst, src, sizeof(Sha));
+    XMEMCPY(dst, src, sizeof(wc_Sha));
 
 #ifdef WOLFSSL_ASYNC_CRYPT
     ret = wolfAsync_DevCopy(&src->asyncDev, &dst->asyncDev);
+#endif
+#ifdef WOLFSSL_PIC32MZ_HASH
+    ret = wc_Pic32HashCopy(&src->cache, &dst->cache);
 #endif
 
     return ret;

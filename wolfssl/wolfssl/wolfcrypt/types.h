@@ -1,6 +1,6 @@
 /* types.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -46,28 +46,35 @@
 	    #endif
 	    typedef unsigned short word16;
 	    typedef unsigned int   word32;
+	    typedef byte           word24[3];
 	#endif
 
 
 	/* try to set SIZEOF_LONG or LONG_LONG if user didn't */
-	#if !defined(_MSC_VER) && !defined(__BCPLUSPLUS__)
+	#if !defined(_MSC_VER) && !defined(__BCPLUSPLUS__) && !defined(__EMSCRIPTEN__)
 	    #if !defined(SIZEOF_LONG_LONG) && !defined(SIZEOF_LONG)
-	        #if (defined(__alpha__) || defined(__ia64__) || defined(_ARCH_PPC64) \
-	                || defined(__mips64)  || defined(__x86_64__))
+	        #if (defined(__alpha__) || defined(__ia64__) || \
+	            defined(_ARCH_PPC64) || defined(__mips64) || \
+	            defined(__x86_64__) || \
+	            ((defined(sun) || defined(__sun)) && \
+	             (defined(LP64) || defined(_LP64))))
 	            /* long should be 64bit */
 	            #define SIZEOF_LONG 8
 	        #elif defined(__i386__) || defined(__CORTEX_M3__)
 	            /* long long should be 64bit */
 	            #define SIZEOF_LONG_LONG 8
 	        #endif
-	    #endif
+ 	    #endif
 	#endif
-
 
 	#if defined(_MSC_VER) || defined(__BCPLUSPLUS__)
 	    #define WORD64_AVAILABLE
 	    #define W64LIT(x) x##ui64
 	    typedef unsigned __int64 word64;
+	#elif defined(__EMSCRIPTEN__)
+	    #define WORD64_AVAILABLE
+	    #define W64LIT(x) x##ull
+	    typedef unsigned long long word64;
 	#elif defined(SIZEOF_LONG) && SIZEOF_LONG == 8
 	    #define WORD64_AVAILABLE
 	    #define W64LIT(x) x##LL
@@ -80,25 +87,35 @@
 	    #define WORD64_AVAILABLE
 	    #define W64LIT(x) x##LL
 	    typedef unsigned long long word64;
-	#else
-	    #define MP_16BIT  /* for mp_int, mp_word needs to be twice as big as
-	                         mp_digit, no 64 bit type so make mp_digit 16 bit */
 	#endif
 
-
+#if !defined(NO_64BIT) && defined(WORD64_AVAILABLE)
 	/* These platforms have 64-bit CPU registers.  */
 	#if (defined(__alpha__) || defined(__ia64__) || defined(_ARCH_PPC64) || \
 	     defined(__mips64)  || defined(__x86_64__) || defined(_M_X64)) || \
-         defined(__aarch64__)
+         defined(__aarch64__) || defined(__sparc64__)
 	    typedef word64 wolfssl_word;
         #define WC_64BIT_CPU
-	#else
+	#elif (defined(sun) || defined(__sun)) && \
+          (defined(LP64) || defined(_LP64))
+        /* LP64 with GNU GCC compiler is reserved for when long int is 64 bits
+         * and int uses 32 bits. When using Solaris Studio sparc and __sparc are
+         * avialable for 32 bit detection but __sparc64__ could be missed. This
+         * uses LP64 for checking 64 bit CPU arch. */
+	    typedef word64 wolfssl_word;
+        #define WC_64BIT_CPU
+    #else
 	    typedef word32 wolfssl_word;
 	    #ifdef WORD64_AVAILABLE
 	        #define WOLFCRYPT_SLOW_WORD64
 	    #endif
 	#endif
-
+#else
+        #undef WORD64_AVAILABLE
+        typedef word32 wolfssl_word;
+        #define MP_16BIT  /* for mp_int, mp_word needs to be twice as big as
+                             mp_digit, no 64 bit type so make mp_digit 16 bit */
+#endif
 
 	enum {
 	    WOLFSSL_WORD_SIZE  = sizeof(wolfssl_word),
@@ -161,6 +178,15 @@
 	    #define THREAD_LS_T
 	#endif
 
+    /* GCC 7 has new switch() fall-through detection */
+    #if defined(__GNUC__)
+        #if ((__GNUC__ > 7) || ((__GNUC__ == 7) && (__GNUC_MINOR__ >= 1)))
+            #define FALL_THROUGH __attribute__ ((fallthrough));
+        #endif
+    #endif
+    #ifndef FALL_THROUGH
+        #define FALL_THROUGH
+    #endif
 
 	/* Micrium will use Visual Studio for compilation but not the Win32 API */
 	#if defined(_WIN32) && !defined(MICRIUM) && !defined(FREERTOS) && \
@@ -207,8 +233,7 @@
 	#elif !defined(MICRIUM_MALLOC) && !defined(EBSNET) \
 	        && !defined(WOLFSSL_SAFERTOS) && !defined(FREESCALE_MQX) \
 	        && !defined(FREESCALE_KSDK_MQX) && !defined(FREESCALE_FREE_RTOS) \
-            && !defined(WOLFSSL_LEANPSK) && !defined(FREERTOS) && !defined(FREERTOS_TCP)\
-            && !defined(WOLFSSL_uITRON4)
+            && !defined(WOLFSSL_LEANPSK) && !defined(WOLFSSL_uITRON4)
 	    /* default C runtime, can install different routines at runtime via cbs */
 	    #include <wolfssl/wolfcrypt/memory.h>
         #ifdef WOLFSSL_STATIC_MEMORY
@@ -221,7 +246,7 @@
 				#define XFREE(p, h, t)       {void* xp = (p); if((xp)) wolfSSL_Free((xp), (h), (t));}
 				#define XREALLOC(p, n, h, t) wolfSSL_Realloc((p), (n), (h), (t))
             #endif /* WOLFSSL_DEBUG_MEMORY */
-        #else
+        #elif !defined(FREERTOS) && !defined(FREERTOS_TCP)
             #ifdef WOLFSSL_DEBUG_MEMORY
 				#define XMALLOC(s, h, t)     ((void)h, (void)t, wolfSSL_Malloc((s), __func__, __LINE__))
 				#define XFREE(p, h, t)       {void* xp = (p); if((xp)) wolfSSL_Free((xp), __func__, __LINE__);}
@@ -240,7 +265,7 @@
             VAR_TYPE* VAR_NAME = (VAR_TYPE*)XMALLOC(sizeof(VAR_TYPE) * VAR_SIZE, HEAP, DYNAMIC_TYPE_WOLF_BIGINT);
         #define DECLARE_VAR_INIT(VAR_NAME, VAR_TYPE, VAR_SIZE, INIT_VALUE, HEAP) \
             VAR_TYPE* VAR_NAME = ({ \
-                VAR_TYPE* ptr = XMALLOC(sizeof(VAR_TYPE) * VAR_SIZE, HEAP, DYNAMIC_TYPE_WOLF_BIGINT); \
+                VAR_TYPE* ptr = (VAR_TYPE*)XMALLOC(sizeof(VAR_TYPE) * VAR_SIZE, HEAP, DYNAMIC_TYPE_WOLF_BIGINT); \
                 if (ptr && INIT_VALUE) { \
                     XMEMCPY(ptr, INIT_VALUE, sizeof(VAR_TYPE) * VAR_SIZE); \
                 } \
@@ -269,11 +294,12 @@
         #define FREE_ARRAY(VAR_NAME, VAR_ITEMS, HEAP)  /* nothing to free, its stack */
     #endif
 
+    #ifndef WOLFSSL_LEANPSK
+	    char* mystrnstr(const char* s1, const char* s2, unsigned int n);
+    #endif
 
 	#ifndef STRING_USER
 	    #include <string.h>
-	    char* mystrnstr(const char* s1, const char* s2, unsigned int n);
-
 	    #define XMEMCPY(d,s,l)    memcpy((d),(s),(l))
 	    #define XMEMSET(b,c,l)    memset((b),(c),(l))
 	    #define XMEMCMP(s1,s2,n)  memcmp((s1),(s2),(n))
@@ -287,40 +313,58 @@
 	    #define XSTRNSTR(s1,s2,n) mystrnstr((s1),(s2),(n))
 	    #define XSTRNCMP(s1,s2,n) strncmp((s1),(s2),(n))
 	    #define XSTRNCAT(s1,s2,n) strncat((s1),(s2),(n))
-	    #ifndef USE_WINDOWS_API
-	        #define XSTRNCASECMP(s1,s2,n) strncasecmp((s1),(s2),(n))
-	    #else
+
+        #if defined(MICROCHIP_PIC32) || defined(WOLFSSL_TIRTOS)
+            /* XC32 does not support strncasecmp, so use case sensitive one */
+            #define XSTRNCASECMP(s1,s2,n) strncmp((s1),(s2),(n))
+        #elif defined(USE_WINDOWS_API)
 	        #define XSTRNCASECMP(s1,s2,n) _strnicmp((s1),(s2),(n))
+        #else
+	        #define XSTRNCASECMP(s1,s2,n) strncasecmp((s1),(s2),(n))
 	    #endif
 
-        #if defined(WOLFSSL_MYSQL_COMPATIBLE) || defined(WOLFSSL_NGINX) || defined(WOLFSSL_HAPROXY)
-	        #ifndef USE_WINDOWS_API
-	            #define XSNPRINTF snprintf
-	        #else
-	            #define XSNPRINTF _snprintf
-	        #endif
-        #endif /* WOLFSSL_MYSQL_COMPATIBLE */
+        /* snprintf is used in asn.c for GetTimeString, PKCS7 test, and when
+           debugging is turned on */
+        #ifndef USE_WINDOWS_API
+            #if defined(NO_FILESYSTEM) && defined(OPENSSL_EXTRA) && \
+               !defined(NO_STDIO_FILESYSTEM)
+                /* case where stdio is not included else where but is needed for
+                 * snprintf */
+                #include <stdio.h>
+            #endif
+            #define XSNPRINTF snprintf
+        #else
+            #define XSNPRINTF _snprintf
+        #endif
 
         #if defined(WOLFSSL_CERT_EXT) || defined(HAVE_ALPN)
             /* use only Thread Safe version of strtok */
-            #if !defined(USE_WINDOWS_API) && !defined(INTIME_RTOS)
-                #define XSTRTOK strtok_r
-            #else
-                #define XSTRTOK strtok_s
-
-                #ifdef __MINGW32__
-                    #pragma GCC diagnostic push
-                    #pragma GCC diagnostic warning "-Wcpp"
-                    #warning "MinGW may be missing strtok_s. You can find a public domain implementation here: https://github.com/fletcher/MultiMarkdown-4/blob/master/strtok.c"
-                    #pragma GCC diagnostic pop
+            #if defined(__MINGW32__) || defined(WOLFSSL_TIRTOS) || \
+                    defined(USE_WOLF_STRTOK)
+                #ifndef USE_WOLF_STRTOK
+                    #define USE_WOLF_STRTOK
                 #endif
+                #define XSTRTOK wc_strtok
+            #elif defined(USE_WINDOWS_API) || defined(INTIME_RTOS)
+                #define XSTRTOK strtok_s
+            #else
+                #define XSTRTOK strtok_r
             #endif
         #endif
 	#endif
 
+    #if !defined(NO_FILESYSTEM) && defined(OPENSSL_EXTRA) && \
+        !defined(NO_STDIO_FILESYSTEM)
+        #ifndef XGETENV
+            #include <stdlib.h>
+            #define XGETENV getenv
+        #endif
+    #endif /* OPENSSL_EXTRA */
+
 	#ifndef CTYPE_USER
 	    #include <ctype.h>
-	    #if defined(HAVE_ECC) || defined(HAVE_OCSP) || defined(WOLFSSL_KEY_GEN)
+	    #if defined(HAVE_ECC) || defined(HAVE_OCSP) || \
+            defined(WOLFSSL_KEY_GEN) || !defined(NO_DSA)
 	        #define XTOUPPER(c)     toupper((c))
 	        #define XISALPHA(c)     isalpha((c))
 	    #endif
@@ -389,22 +433,44 @@
         DYNAMIC_TYPE_PKCS         = 56,
         DYNAMIC_TYPE_MUTEX        = 57,
         DYNAMIC_TYPE_PKCS7        = 58,
-        DYNAMIC_TYPE_AES          = 59,
+        DYNAMIC_TYPE_AES_BUFFER   = 59,
         DYNAMIC_TYPE_WOLF_BIGINT  = 60,
         DYNAMIC_TYPE_ASN1         = 61,
         DYNAMIC_TYPE_LOG          = 62,
         DYNAMIC_TYPE_WRITEDUP     = 63,
-        DYNAMIC_TYPE_DH_BUFFER    = 64,
+        DYNAMIC_TYPE_PRIVATE_KEY  = 64,
         DYNAMIC_TYPE_HMAC         = 65,
         DYNAMIC_TYPE_ASYNC        = 66,
         DYNAMIC_TYPE_ASYNC_NUMA   = 67,
         DYNAMIC_TYPE_ASYNC_NUMA64 = 68,
+        DYNAMIC_TYPE_CURVE25519   = 69,
+        DYNAMIC_TYPE_ED25519      = 70,
+        DYNAMIC_TYPE_SECRET       = 71,
+        DYNAMIC_TYPE_DIGEST       = 72,
+        DYNAMIC_TYPE_RSA_BUFFER   = 73,
+        DYNAMIC_TYPE_DCERT        = 74,
+        DYNAMIC_TYPE_STRING       = 75,
+        DYNAMIC_TYPE_PEM          = 76,
+        DYNAMIC_TYPE_DER          = 77,
+        DYNAMIC_TYPE_CERT_EXT     = 78,
+        DYNAMIC_TYPE_ALPN         = 79,
+        DYNAMIC_TYPE_ENCRYPTEDINFO= 80,
+        DYNAMIC_TYPE_DIRCTX       = 81,
+        DYNAMIC_TYPE_HASHCTX      = 82,
+        DYNAMIC_TYPE_SEED         = 83,
+        DYNAMIC_TYPE_SYMETRIC_KEY = 84,
+        DYNAMIC_TYPE_ECC_BUFFER   = 85,
+        DYNAMIC_TYPE_QSH          = 86,
+        DYNAMIC_TYPE_SALT         = 87,
+        DYNAMIC_TYPE_HASH_TMP     = 88,
+        DYNAMIC_TYPE_BLOB         = 89,
+        DYNAMIC_TYPE_NAME_ENTRY   = 90,
 	};
 
 	/* max error buffer string size */
-	enum {
-	    WOLFSSL_MAX_ERROR_SZ = 80
-	};
+    #ifndef WOLFSSL_MAX_ERROR_SZ
+	    #define WOLFSSL_MAX_ERROR_SZ 80
+    #endif
 
 	/* stack protection */
 	enum {
@@ -474,7 +540,7 @@
             #endif
         #endif
 
-       #if !defined(ALIGN32)
+        #if !defined(ALIGN32)
             #if defined(__GNUC__)
                 #define ALIGN32 __attribute__ ( (aligned (32)))
             #elif defined(_MSC_VER)
@@ -485,12 +551,39 @@
                 #define ALIGN32
             #endif
         #endif /* !ALIGN32 */
+
+        #if defined(__GNUC__)
+            #define ALIGN128 __attribute__ ( (aligned (128)))
+        #elif defined(_MSC_VER)
+            /* disable align warning, we want alignment ! */
+            #pragma warning(disable: 4324)
+            #define ALIGN128 __declspec (align (128))
+        #else
+            #define ALIGN128
+        #endif
+
+        #if defined(__GNUC__)
+            #define ALIGN256 __attribute__ ( (aligned (256)))
+        #elif defined(_MSC_VER)
+            /* disable align warning, we want alignment ! */
+            #pragma warning(disable: 4324)
+            #define ALIGN256 __declspec (align (256))
+        #else
+            #define ALIGN256
+        #endif
+
     #else
         #ifndef ALIGN16
             #define ALIGN16
         #endif
         #ifndef ALIGN32
             #define ALIGN32
+        #endif
+        #ifndef ALIGN128
+            #define ALIGN128
+        #endif
+        #ifndef ALIGN256
+            #define ALIGN256
         #endif
     #endif /* WOLFSSL_AESNI || WOLFSSL_ARMASM */
 
@@ -510,6 +603,29 @@
     #else
         #define EXIT_TEST(ret) return ret
     #endif
+
+
+    #if defined(__GNUC__)
+        #define WOLFSSL_PACK __attribute__ ((packed))
+    #else
+        #define WOLFSSL_PACK
+    #endif
+
+    #ifndef __GNUC_PREREQ
+        #if defined(__GNUC__) && defined(__GNUC_MINOR__)
+            #define __GNUC_PREREQ(maj, min) \
+                ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+        #else
+            #define __GNUC_PREREQ(maj, min) (0) /* not GNUC */
+        #endif
+    #endif
+
+    #if defined(__GNUC__)
+        #define WC_NORETURN __attribute__((noreturn))
+    #else
+        #define WC_NORETURN
+    #endif
+
 
 	#ifdef __cplusplus
 	    }   /* extern "C" */

@@ -1,3 +1,24 @@
+/* sha.h
+ *
+ * Copyright (C) 2006-2017 wolfSSL Inc.
+ *
+ * This file is part of wolfSSL.
+ *
+ * wolfSSL is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * wolfSSL is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
+ */
+
 /* sha.h for openssl */
 
 
@@ -18,17 +39,17 @@
 
 typedef struct WOLFSSL_SHA_CTX {
     /* big enough to hold wolfcrypt Sha, but check on init */
-    int holder[28 + (WC_ASYNC_DEV_SIZE / sizeof(int))];
+    void* holder[(112 + WC_ASYNC_DEV_SIZE) / sizeof(void*)];
 } WOLFSSL_SHA_CTX;
 
-WOLFSSL_API void wolfSSL_SHA_Init(WOLFSSL_SHA_CTX*);
-WOLFSSL_API void wolfSSL_SHA_Update(WOLFSSL_SHA_CTX*, const void*, unsigned long);
-WOLFSSL_API void wolfSSL_SHA_Final(unsigned char*, WOLFSSL_SHA_CTX*);
+WOLFSSL_API int wolfSSL_SHA_Init(WOLFSSL_SHA_CTX*);
+WOLFSSL_API int wolfSSL_SHA_Update(WOLFSSL_SHA_CTX*, const void*, unsigned long);
+WOLFSSL_API int wolfSSL_SHA_Final(unsigned char*, WOLFSSL_SHA_CTX*);
 
 /* SHA1 points to above, shouldn't use SHA0 ever */
-WOLFSSL_API void wolfSSL_SHA1_Init(WOLFSSL_SHA_CTX*);
-WOLFSSL_API void wolfSSL_SHA1_Update(WOLFSSL_SHA_CTX*, const void*, unsigned long);
-WOLFSSL_API void wolfSSL_SHA1_Final(unsigned char*, WOLFSSL_SHA_CTX*);
+WOLFSSL_API int wolfSSL_SHA1_Init(WOLFSSL_SHA_CTX*);
+WOLFSSL_API int wolfSSL_SHA1_Update(WOLFSSL_SHA_CTX*, const void*, unsigned long);
+WOLFSSL_API int wolfSSL_SHA1_Final(unsigned char*, WOLFSSL_SHA_CTX*);
 
 enum {
     SHA_DIGEST_LENGTH = 20
@@ -53,13 +74,13 @@ typedef WOLFSSL_SHA_CTX SHA_CTX;
  * Sha224, is expected to also be 16 byte aligned addresses.  */
 typedef struct WOLFSSL_SHA224_CTX {
     /* big enough to hold wolfcrypt Sha224, but check on init */
-    ALIGN16 int holder[34 + (WC_ASYNC_DEV_SIZE / sizeof(int))];
+    ALIGN16 void* holder[(272 + WC_ASYNC_DEV_SIZE) / sizeof(void*)];
 } WOLFSSL_SHA224_CTX;
 
-WOLFSSL_API void wolfSSL_SHA224_Init(WOLFSSL_SHA224_CTX*);
-WOLFSSL_API void wolfSSL_SHA224_Update(WOLFSSL_SHA224_CTX*, const void*,
+WOLFSSL_API int wolfSSL_SHA224_Init(WOLFSSL_SHA224_CTX*);
+WOLFSSL_API int wolfSSL_SHA224_Update(WOLFSSL_SHA224_CTX*, const void*,
 	                                 unsigned long);
-WOLFSSL_API void wolfSSL_SHA224_Final(unsigned char*, WOLFSSL_SHA224_CTX*);
+WOLFSSL_API int wolfSSL_SHA224_Final(unsigned char*, WOLFSSL_SHA224_CTX*);
 
 enum {
     SHA224_DIGEST_LENGTH = 28
@@ -80,13 +101,13 @@ typedef WOLFSSL_SHA224_CTX SHA224_CTX;
  * Sha256, is expected to also be 16 byte aligned addresses.  */
 typedef struct WOLFSSL_SHA256_CTX {
     /* big enough to hold wolfcrypt Sha256, but check on init */
-    ALIGN16 int holder[34 + (WC_ASYNC_DEV_SIZE / sizeof(int))];
+    ALIGN16 void* holder[(272 + WC_ASYNC_DEV_SIZE) / sizeof(void*)];
 } WOLFSSL_SHA256_CTX;
 
-WOLFSSL_API void wolfSSL_SHA256_Init(WOLFSSL_SHA256_CTX*);
-WOLFSSL_API void wolfSSL_SHA256_Update(WOLFSSL_SHA256_CTX*, const void*,
+WOLFSSL_API int wolfSSL_SHA256_Init(WOLFSSL_SHA256_CTX*);
+WOLFSSL_API int wolfSSL_SHA256_Update(WOLFSSL_SHA256_CTX*, const void*,
 	                                 unsigned long);
-WOLFSSL_API void wolfSSL_SHA256_Final(unsigned char*, WOLFSSL_SHA256_CTX*);
+WOLFSSL_API int wolfSSL_SHA256_Final(unsigned char*, WOLFSSL_SHA256_CTX*);
 
 enum {
     SHA256_DIGEST_LENGTH = 32
@@ -98,19 +119,24 @@ typedef WOLFSSL_SHA256_CTX SHA256_CTX;
 #define SHA256_Init   wolfSSL_SHA256_Init
 #define SHA256_Update wolfSSL_SHA256_Update
 #define SHA256_Final  wolfSSL_SHA256_Final
+#if defined(NO_OLD_SHA256_NAMES) && !defined(HAVE_FIPS)
+    /* SHA256 is only available in non-fips mode because of SHA256 enum in FIPS
+     * build. */
+    #define SHA256 wolfSSL_SHA256
+#endif
 
 
 #ifdef WOLFSSL_SHA384
 
 typedef struct WOLFSSL_SHA384_CTX {
     /* big enough to hold wolfCrypt Sha384, but check on init */
-    long long holder[32 + (WC_ASYNC_DEV_SIZE / sizeof(long long))];
+    void* holder[(256 + WC_ASYNC_DEV_SIZE) / sizeof(void*)];
 } WOLFSSL_SHA384_CTX;
 
-WOLFSSL_API void wolfSSL_SHA384_Init(WOLFSSL_SHA384_CTX*);
-WOLFSSL_API void wolfSSL_SHA384_Update(WOLFSSL_SHA384_CTX*, const void*,
+WOLFSSL_API int wolfSSL_SHA384_Init(WOLFSSL_SHA384_CTX*);
+WOLFSSL_API int wolfSSL_SHA384_Update(WOLFSSL_SHA384_CTX*, const void*,
 	                                 unsigned long);
-WOLFSSL_API void wolfSSL_SHA384_Final(unsigned char*, WOLFSSL_SHA384_CTX*);
+WOLFSSL_API int wolfSSL_SHA384_Final(unsigned char*, WOLFSSL_SHA384_CTX*);
 
 enum {
     SHA384_DIGEST_LENGTH = 48
@@ -129,13 +155,13 @@ typedef WOLFSSL_SHA384_CTX SHA384_CTX;
 
 typedef struct WOLFSSL_SHA512_CTX {
     /* big enough to hold wolfCrypt Sha384, but check on init */
-    long long holder[36 + (WC_ASYNC_DEV_SIZE / sizeof(long long))];
+    void* holder[(288 + WC_ASYNC_DEV_SIZE) / sizeof(void*)];
 } WOLFSSL_SHA512_CTX;
 
-WOLFSSL_API void wolfSSL_SHA512_Init(WOLFSSL_SHA512_CTX*);
-WOLFSSL_API void wolfSSL_SHA512_Update(WOLFSSL_SHA512_CTX*, const void*,
+WOLFSSL_API int wolfSSL_SHA512_Init(WOLFSSL_SHA512_CTX*);
+WOLFSSL_API int wolfSSL_SHA512_Update(WOLFSSL_SHA512_CTX*, const void*,
 	                                 unsigned long);
-WOLFSSL_API void wolfSSL_SHA512_Final(unsigned char*, WOLFSSL_SHA512_CTX*);
+WOLFSSL_API int wolfSSL_SHA512_Final(unsigned char*, WOLFSSL_SHA512_CTX*);
 
 enum {
     SHA512_DIGEST_LENGTH = 64

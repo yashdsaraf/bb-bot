@@ -228,7 +228,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\io.c"
+				RelativePath=".\src\wolfio.c"
 				>
 			</File>
 			<File
@@ -317,6 +317,10 @@
 			</File>
 			<File
 				RelativePath=".\src\tls.c"
+				>
+			</File>
+			<File
+				RelativePath=".\src\tls13.c"
 				>
 			</File>
 			<File

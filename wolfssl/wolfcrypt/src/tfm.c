@@ -1,6 +1,6 @@
 /* tfm.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -27,8 +27,8 @@
  */
 
 /**
- *  Edited by Moises Guimaraes (moisesguimaraesm@gmail.com)
- *  to fit CyaSSL's needs.
+ *  Edited by Moises Guimaraes (moises@wolfssl.com)
+ *  to fit wolfSSL's needs.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -314,7 +314,7 @@ void fp_mul(fp_int *A, fp_int *B, fp_int *C)
 
 clean:
     /* zero any excess digits on the destination that we didn't write to */
-    for (y = C->used; y < oldused; y++) {
+    for (y = C->used; y >= 0 && y < oldused; y++) {
         C->dp[y] = 0;
     }
 }
@@ -1045,26 +1045,6 @@ int fp_addmod(fp_int *a, fp_int *b, fp_int *c, fp_int *d)
 
 #ifdef TFM_TIMING_RESISTANT
 
-#ifndef WC_NO_CACHE_RESISTANT
-/* all off / all on pointer addresses for constant calculations */
-/* ecc.c uses same table */
-const wolfssl_word wc_off_on_addr[2] =
-{
-#if defined(WC_64BIT_CPU)
-    W64LIT(0x0000000000000000),
-    W64LIT(0xffffffffffffffff)
-#elif defined(WC_16BIT_CPU)
-    0x0000U,
-    0xffffU
-#else
-    /* 32 bit */
-    0x00000000U,
-    0xffffffffU
-#endif
-};
-
-#endif /* WC_NO_CACHE_RESISTANT */
-
 /* timing resistant montgomery ladder based exptmod
    Based on work by Marc Joye, Sung-Ming Yen, "The Montgomery Powering Ladder",
    Cryptographic Hardware and Embedded Systems, CHES 2002
@@ -1499,7 +1479,7 @@ void fp_sqr(fp_int *A, fp_int *B)
 
 clean:
   /* zero any excess digits on the destination that we didn't write to */
-  for (y = B->used; y < oldused; y++) {
+  for (y = B->used; y >= 0 && y < oldused; y++) {
     B->dp[y] = 0;
   }
 }
@@ -1718,12 +1698,8 @@ void fp_montgomery_calc_normalization(fp_int *a, fp_int *b)
 #ifdef HAVE_INTEL_MULX
 static INLINE void innermul8_mulx(fp_digit *c_mulx, fp_digit *cy_mulx, fp_digit *tmpm, fp_digit mu)
 {
-    fp_digit _c0, _c1, _c2, _c3, _c4, _c5, _c6, _c7, cy ;
-
-    cy = *cy_mulx ;
-    _c0=c_mulx[0]; _c1=c_mulx[1]; _c2=c_mulx[2]; _c3=c_mulx[3]; _c4=c_mulx[4]; _c5=c_mulx[5]; _c6=c_mulx[6]; _c7=c_mulx[7];
+    fp_digit cy = *cy_mulx ;
     INNERMUL8_MULX ;
-    c_mulx[0]=_c0; c_mulx[1]=_c1; c_mulx[2]=_c2; c_mulx[3]=_c3; c_mulx[4]=_c4; c_mulx[5]=_c5; c_mulx[6]=_c6; c_mulx[7]=_c7;
     *cy_mulx = cy ;
 }
 
@@ -1888,8 +1864,21 @@ void fp_montgomery_reduce(fp_int *a, fp_int *m, fp_digit mp)
 
 void fp_read_unsigned_bin(fp_int *a, const unsigned char *b, int c)
 {
+#if defined(ALT_ECC_SIZE) || defined(HAVE_WOLF_BIGINT)
+  const word32 maxC = (a->size * sizeof(fp_digit));
+#else
+  const word32 maxC = (FP_SIZE * sizeof(fp_digit));
+#endif
+
   /* zero the int */
   fp_zero (a);
+
+  /* if input b excess max, then truncate */
+  if (c > 0 && (word32)c > maxC) {
+     int excess = (c - maxC);
+     c -= excess;
+     b += excess;
+  }
 
   /* If we know the endianness of this architecture, and we're using
      32-bit fp_digits, we can optimize this */
@@ -1902,11 +1891,6 @@ void fp_read_unsigned_bin(fp_int *a, const unsigned char *b, int c)
   {
      unsigned char *pd = (unsigned char *)a->dp;
 
-     if ((unsigned)c > (FP_SIZE * sizeof(fp_digit))) {
-        int excess = c - (FP_SIZE * sizeof(fp_digit));
-        c -= excess;
-        b += excess;
-     }
      a->used = (c + sizeof(fp_digit) - 1)/sizeof(fp_digit);
      /* read the bytes in */
 #ifdef BIG_ENDIAN_ORDER
@@ -1933,7 +1917,10 @@ void fp_read_unsigned_bin(fp_int *a, const unsigned char *b, int c)
   for (; c > 0; c--) {
      fp_mul_2d (a, 8, a);
      a->dp[0] |= *b++;
-     a->used += 1;
+
+     if (a->used == 0) {
+         a->used = 1;
+     }
   }
 #endif
   fp_clamp (a);
@@ -1941,11 +1928,29 @@ void fp_read_unsigned_bin(fp_int *a, const unsigned char *b, int c)
 
 int fp_to_unsigned_bin_at_pos(int x, fp_int *t, unsigned char *b)
 {
+#if DIGIT_BIT == 64 || DIGIT_BIT == 32
+   int i, j;
+   fp_digit n;
+
+   for (j=0,i=0; i<t->used-1; ) {
+       b[x++] = (unsigned char)(t->dp[i] >> j);
+       j += 8;
+       i += j == DIGIT_BIT;
+       j &= DIGIT_BIT - 1;
+   }
+   n = t->dp[i];
+   while (n != 0) {
+       b[x++] = (unsigned char)n;
+       n >>= 8;
+   }
+   return x;
+#else
    while (fp_iszero (t) == FP_NO) {
       b[x++] = (unsigned char) (t->dp[0] & 255);
       fp_div_2d (t, 8, t, NULL);
   }
   return x;
+#endif
 }
 
 void fp_to_unsigned_bin(fp_int *a, unsigned char *b)
@@ -1982,7 +1987,7 @@ void fp_set_int(fp_int *a, unsigned long b)
 
   /* use direct fp_set if b is less than fp_digit max */
   if (b < FP_DIGIT_MAX) {
-    fp_set (a, b);
+    fp_set (a, (fp_digit)b);
     return;
   }
 
@@ -2450,6 +2455,12 @@ int mp_mul_2d(fp_int *a, int b, fp_int *c)
 	return MP_OKAY;
 }
 
+int mp_2expt(fp_int* a, int b)
+{
+    fp_2expt(a, b);
+    return MP_OKAY;
+}
+
 int mp_div(fp_int * a, fp_int * b, fp_int * c, fp_int * d)
 {
     return fp_div(a, b, c, d);
@@ -2476,7 +2487,7 @@ void fp_copy(fp_int *a, fp_int *b)
             XMEMCPY(b->dp, a->dp, a->used * sizeof(fp_digit));
 
             /* zero any excess digits on the destination that we didn't write to */
-            for (x = b->used; x < oldused; x++) {
+            for (x = b->used; x >= 0 && x < oldused; x++) {
                 b->dp[x] = 0;
             }
         }
@@ -2595,7 +2606,7 @@ int mp_montgomery_calc_normalization(mp_int *a, mp_int *b)
 
 
 #if defined(WOLFSSL_KEY_GEN) || defined(HAVE_COMP_KEY) || \
-    defined(WOLFSSL_DEBUG_MATH)
+    defined(WOLFSSL_DEBUG_MATH) || defined(DEBUG_WOLFSSL)
 
 #ifdef WOLFSSL_KEY_GEN
 /* swap the elements of two integers, for cases where you can't simply swap the
@@ -2669,6 +2680,8 @@ static int fp_div_d(fp_int *a, fp_digit b, fp_int *c, fp_digit *d)
   fp_digit t;
   int      ix;
 
+  fp_init(&q);
+
   /* cannot divide by zero */
   if (b == 0) {
      return FP_VAL;
@@ -2697,9 +2710,6 @@ static int fp_div_d(fp_int *a, fp_digit b, fp_int *c, fp_digit *d)
   }
 
   if (c != NULL) {
-    /* no easy answer [c'est la vie].  Just division */
-    fp_init(&q);
-
     q.used = a->used;
     q.sign = a->sign;
   }
@@ -2911,9 +2921,9 @@ int fp_isprime_ex(fp_int *a, int t)
 
    /* do trial division */
    for (r = 0; r < FP_PRIME_SIZE; r++) {
-       fp_mod_d(a, primes[r], &d);
-       if (d == 0) {
-          return FP_NO;
+       res = fp_mod_d(a, primes[r], &d);
+       if (res != MP_OKAY || d == 0) {
+           return FP_NO;
        }
    }
 
@@ -3072,14 +3082,61 @@ int mp_add_d(fp_int *a, fp_digit b, fp_int *c)
 #endif  /* HAVE_ECC || !NO_PWDBASED */
 
 
-#if defined(HAVE_ECC) || defined(WOLFSSL_KEY_GEN) || defined(HAVE_COMP_KEY)
+#if !defined(NO_DSA) || defined(HAVE_ECC) || defined(WOLFSSL_KEY_GEN) || \
+    defined(HAVE_COMP_KEY) || defined(WOLFSSL_DEBUG_MATH) || \
+    defined(DEBUG_WOLFSSL)
 
 /* chars used in radix conversions */
-static const char *fp_s_rmap = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                                abcdefghijklmnopqrstuvwxyz+/";
+static const char* const fp_s_rmap = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                     "abcdefghijklmnopqrstuvwxyz+/";
 #endif
 
-#ifdef HAVE_ECC
+#if !defined(NO_DSA) || defined(HAVE_ECC)
+#if DIGIT_BIT == 64 || DIGIT_BIT == 32
+static int fp_read_radix_16(fp_int *a, const char *str)
+{
+  int     i, j, k, neg;
+  char    ch;
+
+  /* if the leading digit is a
+   * minus set the sign to negative.
+   */
+  if (*str == '-') {
+    ++str;
+    neg = FP_NEG;
+  } else {
+    neg = FP_ZPOS;
+  }
+
+  j = 0;
+  k = 0;
+  for (i = (int)(XSTRLEN(str) - 1); i >= 0; i--) {
+      ch = str[i];
+      if (ch >= '0' && ch <= '9')
+          ch -= '0';
+      else if (ch >= 'A' && ch <= 'F')
+          ch -= 'A' - 10;
+      else if (ch >= 'a' && ch <= 'f')
+          ch -= 'a' - 10;
+      else
+          return FP_VAL;
+
+      a->dp[k] |= ((fp_digit)ch) << j;
+      j += 4;
+      k += j == DIGIT_BIT;
+      j &= DIGIT_BIT - 1;
+  }
+
+  a->used = k + 1;
+  fp_clamp(a);
+  /* set the sign only if a != 0 */
+  if (fp_iszero(a) != FP_YES) {
+     a->sign = neg;
+  }
+  return FP_OKAY;
+}
+#endif
+
 static int fp_read_radix(fp_int *a, const char *str, int radix)
 {
   int     y, neg;
@@ -3087,6 +3144,11 @@ static int fp_read_radix(fp_int *a, const char *str, int radix)
 
   /* set the integer to the default of zero */
   fp_zero (a);
+
+#if DIGIT_BIT == 64 || DIGIT_BIT == 32
+  if (radix == 16)
+      return fp_read_radix_16(a, str);
+#endif
 
   /* make sure the radix is ok */
   if (radix < 2 || radix > 64) {
@@ -3141,6 +3203,10 @@ int mp_read_radix(mp_int *a, const char *str, int radix)
 {
     return fp_read_radix(a, str, radix);
 }
+
+#endif /* !defined(NO_DSA) || defined(HAVE_ECC) */
+
+#ifdef HAVE_ECC
 
 /* fast math conversion */
 int mp_sqr(fp_int *A, fp_int *B)
@@ -3197,7 +3263,7 @@ int mp_set(fp_int *a, fp_digit b)
 #endif
 
 #if defined(WOLFSSL_KEY_GEN) || defined(HAVE_COMP_KEY) || \
-    defined(WOLFSSL_DEBUG_MATH)
+    defined(WOLFSSL_DEBUG_MATH) || defined(DEBUG_WOLFSSL)
 
 /* returns size of ASCII representation */
 int mp_radix_size (mp_int *a, int radix, int *size)
@@ -3318,7 +3384,7 @@ void mp_dump(const char* desc, mp_int* a, byte verbose)
   printf("%s: ptr=%p, used=%d, sign=%d, size=%d, fpd=%d\n",
     desc, a, a->used, a->sign, size, (int)sizeof(fp_digit));
 
-  mp_toradix(a, buffer, 16);
+  mp_tohex(a, buffer);
   printf("  %s\n  ", buffer);
 
   if (verbose) {
@@ -3332,6 +3398,13 @@ void mp_dump(const char* desc, mp_int* a, byte verbose)
 #endif /* WOLFSSL_DEBUG_MATH */
 
 #endif /* defined(WOLFSSL_KEY_GEN) || defined(HAVE_COMP_KEY) || defined(WOLFSSL_DEBUG_MATH) */
+
+
+int mp_abs(mp_int* a, mp_int* b)
+{
+    fp_abs(a, b);
+    return FP_OKAY;
+}
 
 
 int mp_lshd (mp_int * a, int b)

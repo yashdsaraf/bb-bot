@@ -1,6 +1,6 @@
 /* idea.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -54,7 +54,7 @@ typedef struct Idea {
 WOLFSSL_API int wc_IdeaSetKey(Idea *idea, const byte* key, word16 keySz,
                               const byte *iv, int dir);
 WOLFSSL_API int wc_IdeaSetIV(Idea *idea, const byte* iv);
-WOLFSSL_API void wc_IdeaCipher(Idea *idea, byte* out, const byte* in);
+WOLFSSL_API int wc_IdeaCipher(Idea *idea, byte* out, const byte* in);
 WOLFSSL_API int wc_IdeaCbcEncrypt(Idea *idea, byte* out,
                                   const byte* in, word32 len);
 WOLFSSL_API int wc_IdeaCbcDecrypt(Idea *idea, byte* out,

@@ -1,6 +1,6 @@
 /* error-crypt.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -97,6 +97,7 @@ enum {
     ASN_DH_KEY_E       = -158,  /* ASN key init error, invalid input */
     ASN_NTRU_KEY_E     = -159,  /* ASN ntru key decode error, invalid input */
     ASN_CRIT_EXT_E     = -160,  /* ASN unsupported critical extension */
+    ASN_ALT_NAME_E     = -161,  /* ASN alternate name error */
 
     ECC_BAD_ARG_E      = -170,  /* ECC input argument of wrong type */
     ASN_ECC_KEY_E      = -171,  /* ASN ECC bad input */
@@ -106,6 +107,7 @@ enum {
     UNICODE_SIZE_E     = -175,  /* Unicode password too big */
     NO_PASSWORD        = -176,  /* no password provided by user */
     ALT_NAME_E         = -177,  /* alt name size problem, too big */
+    BAD_OCSP_RESPONDER = -178,  /* missing key usage extensions */
 
     AES_GCM_AUTH_E     = -180,  /* AES-GCM Authentication check failure */
     AES_CCM_AUTH_E     = -181,  /* AES-CCM Authentication check failure */
@@ -188,7 +190,20 @@ enum {
 
     ASYNC_OP_E          = -245,  /* Async operation error */
 
-    WC_LAST_E           = -245,  /* Update this to indicate last error */
+    ECC_PRIVATEONLY_E   = -246,  /* Invalid use of private only ECC key*/
+    EXTKEYUSAGE_E       = -247,  /* Bad Extended Key Usage value */
+    WC_HW_E             = -248,  /* Error with hardware crypto use */
+    WC_HW_WAIT_E        = -249,  /* Hardware waiting on resource */
+
+    PSS_SALTLEN_E       = -250,  /* PSS length of salt is to long for hash */
+    PRIME_GEN_E         = -251,  /* Failure finding a prime. */
+    BER_INDEF_E         = -252,  /* Cannot decode indefinite length BER. */
+    RSA_OUT_OF_RANGE_E  = -253,  /* Ciphertext to decrypt out of range. */
+    RSAPSS_PAT_FIPS_E   = -254,  /* RSA-PSS PAT failure */
+    ECDSA_PAT_FIPS_E    = -255,  /* ECDSA PAT failure */
+    DH_KAT_FIPS_E       = -256,  /* DH KAT failure */
+
+    WC_LAST_E           = -256,  /* Update this to indicate last error */
     MIN_CODE_E          = -300   /* errors -101 - -299 */
 
     /* add new companion error id strings for any new error codes
@@ -196,9 +211,15 @@ enum {
 };
 
 
+#ifdef NO_ERROR_STRINGS
+    #define wc_GetErrorString(error) "no support for error strings built in"
+    #define wc_ErrorString(err, buf) \
+        XSTRNCPY((buf), wc_GetErrorString((err)), WOLFSSL_MAX_ERROR_SZ);
+
+#else
 WOLFSSL_API void wc_ErrorString(int err, char* buff);
 WOLFSSL_API const char* wc_GetErrorString(int error);
-
+#endif
 
 #ifdef __cplusplus
     } /* extern "C" */

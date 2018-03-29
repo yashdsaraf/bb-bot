@@ -1,6 +1,6 @@
-/* test.c
+/* mcapi_test.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -59,6 +59,8 @@
     #include <stdio.h>
     #include <stdlib.h>
     #include <p32xxxx.h>
+    #define _SUPPRESS_PLIB_WARNING
+    #define _DISABLE_OPENADC10_CONFIGPORT_WARNING
     #include <plib.h>
     #include <sys/appio.h>
     #define init_serial()  /* void out init_serial() */
@@ -214,25 +216,30 @@ static int check_md5(void)
 {
     CRYPT_MD5_CTX mcMd5;
     Md5           defMd5;
+    int           ret;
     byte          mcDigest[CRYPT_MD5_DIGEST_SIZE];
     byte          defDigest[MD5_DIGEST_SIZE];
 
     CRYPT_MD5_Initialize(&mcMd5);
-    wc_InitMd5(&defMd5);
+    ret = wc_InitMd5(&defMd5);
 
-    CRYPT_MD5_DataAdd(&mcMd5, ourData, OUR_DATA_SIZE);
-    wc_Md5Update(&defMd5, ourData, OUR_DATA_SIZE);
+    if (ret == 0) {
+        CRYPT_MD5_DataAdd(&mcMd5, ourData, OUR_DATA_SIZE);
+        ret = wc_Md5Update(&defMd5, ourData, OUR_DATA_SIZE);
+    }
 
-    CRYPT_MD5_Finalize(&mcMd5, mcDigest);
-    wc_Md5Final(&defMd5, defDigest);
+    if (ret == 0) {
+        CRYPT_MD5_Finalize(&mcMd5, mcDigest);
+        ret = wc_Md5Final(&defMd5, defDigest);
+    }
 
     if (memcmp(mcDigest, defDigest, CRYPT_MD5_DIGEST_SIZE) != 0) {
         printf("md5 final memcmp fialed\n");
         return -1;
-    } 
+    }
     printf("md5         mcapi test passed\n");
 
-    return 0;
+    return ret;
 }
 
 
@@ -261,7 +268,7 @@ static int check_sha(void)
     if (memcmp(mcDigest, defDigest, CRYPT_SHA_DIGEST_SIZE) != 0) {
         printf("sha final memcmp failed\n");
         return -1;
-    } 
+    }
     printf("sha         mcapi test passed\n");
 
     return 0;
@@ -272,10 +279,10 @@ static int check_sha(void)
 static int check_sha256(void)
 {
     CRYPT_SHA256_CTX mcSha256;
-    Sha256           defSha256;
+    wc_Sha256        defSha256;
     int              ret;
     byte             mcDigest[CRYPT_SHA256_DIGEST_SIZE];
-    byte             defDigest[SHA256_DIGEST_SIZE];
+    byte             defDigest[WC_SHA256_DIGEST_SIZE];
 
     CRYPT_SHA256_Initialize(&mcSha256);
     ret = wc_InitSha256(&defSha256);
@@ -301,7 +308,7 @@ static int check_sha256(void)
     if (memcmp(mcDigest, defDigest, CRYPT_SHA256_DIGEST_SIZE) != 0) {
         printf("sha256 final memcmp fialed\n");
         return -1;
-    } 
+    }
     printf("sha256      mcapi test passed\n");
 
     return 0;
@@ -312,10 +319,10 @@ static int check_sha256(void)
 static int check_sha384(void)
 {
     CRYPT_SHA384_CTX mcSha384;
-    Sha384           defSha384;
+    wc_Sha384        defSha384;
     int              ret;
     byte             mcDigest[CRYPT_SHA384_DIGEST_SIZE];
-    byte             defDigest[SHA384_DIGEST_SIZE];
+    byte             defDigest[WC_SHA384_DIGEST_SIZE];
 
     CRYPT_SHA384_Initialize(&mcSha384);
     ret = wc_InitSha384(&defSha384);
@@ -341,7 +348,7 @@ static int check_sha384(void)
     if (memcmp(mcDigest, defDigest, CRYPT_SHA384_DIGEST_SIZE) != 0) {
         printf("sha384 final memcmp fialed\n");
         return -1;
-    } 
+    }
     printf("sha384      mcapi test passed\n");
 
     return 0;
@@ -352,10 +359,10 @@ static int check_sha384(void)
 static int check_sha512(void)
 {
     CRYPT_SHA512_CTX mcSha512;
-    Sha512           defSha512;
+    wc_Sha512        defSha512;
     int              ret;
     byte             mcDigest[CRYPT_SHA512_DIGEST_SIZE];
-    byte             defDigest[SHA512_DIGEST_SIZE];
+    byte             defDigest[WC_SHA512_DIGEST_SIZE];
 
     CRYPT_SHA512_Initialize(&mcSha512);
     ret = wc_InitSha512(&defSha512);
@@ -381,7 +388,7 @@ static int check_sha512(void)
     if (memcmp(mcDigest, defDigest, CRYPT_SHA512_DIGEST_SIZE) != 0) {
         printf("sha512 final memcmp fialed\n");
         return -1;
-    } 
+    }
     printf("sha512      mcapi test passed\n");
 
     return 0;
@@ -395,13 +402,13 @@ static int check_hmac(void)
     Hmac           defHmac;
     int            ret;
     byte           mcDigest[CRYPT_SHA512_DIGEST_SIZE];
-    byte           defDigest[SHA512_DIGEST_SIZE];
+    byte           defDigest[WC_SHA512_DIGEST_SIZE];
 
     strncpy((char*)key, "Jefe", 4);
 
     /* SHA1 */
     CRYPT_HMAC_SetKey(&mcHmac, CRYPT_HMAC_SHA, key, 4);
-    ret = wc_HmacSetKey(&defHmac, SHA, key, 4);
+    ret = wc_HmacSetKey(&defHmac, WC_SHA, key, 4);
     if (ret != 0) {
         printf("hmac sha setkey default failed\n");
         return -1;
@@ -424,12 +431,12 @@ static int check_hmac(void)
     if (memcmp(mcDigest, defDigest, CRYPT_SHA_DIGEST_SIZE) != 0) {
         printf("hmac sha final memcmp fialed\n");
         return -1;
-    } 
+    }
     printf("hmac sha    mcapi test passed\n");
 
     /* SHA-256 */
     CRYPT_HMAC_SetKey(&mcHmac, CRYPT_HMAC_SHA256, key, 4);
-    ret = wc_HmacSetKey(&defHmac, SHA256, key, 4);
+    ret = wc_HmacSetKey(&defHmac, WC_SHA256, key, 4);
     if (ret != 0) {
         printf("hmac sha256 setkey default failed\n");
         return -1;
@@ -452,12 +459,12 @@ static int check_hmac(void)
     if (memcmp(mcDigest, defDigest, CRYPT_SHA256_DIGEST_SIZE) != 0) {
         printf("hmac sha256 final memcmp fialed\n");
         return -1;
-    } 
+    }
     printf("hmac sha256 mcapi test passed\n");
 
     /* SHA-384 */
     CRYPT_HMAC_SetKey(&mcHmac, CRYPT_HMAC_SHA384, key, 4);
-    ret = wc_HmacSetKey(&defHmac, SHA384, key, 4);
+    ret = wc_HmacSetKey(&defHmac, WC_SHA384, key, 4);
     if (ret != 0) {
         printf("hmac sha384 setkey default failed\n");
         return -1;
@@ -480,12 +487,12 @@ static int check_hmac(void)
     if (memcmp(mcDigest, defDigest, CRYPT_SHA384_DIGEST_SIZE) != 0) {
         printf("hmac sha384 final memcmp fialed\n");
         return -1;
-    } 
+    }
     printf("hmac sha384 mcapi test passed\n");
 
     /* SHA-512 */
     CRYPT_HMAC_SetKey(&mcHmac, CRYPT_HMAC_SHA512, key, 4);
-    ret = wc_HmacSetKey(&defHmac, SHA512, key, 4);
+    ret = wc_HmacSetKey(&defHmac, WC_SHA512, key, 4);
     if (ret != 0) {
         printf("hmac sha512 setkey default failed\n");
         return -1;
@@ -508,7 +515,7 @@ static int check_hmac(void)
     if (memcmp(mcDigest, defDigest, CRYPT_SHA512_DIGEST_SIZE) != 0) {
         printf("hmac sha512 final memcmp fialed\n");
         return -1;
-    } 
+    }
     printf("hmac sha512 mcapi test passed\n");
 
     return 0;
@@ -621,7 +628,7 @@ static int check_compress(void)
 static int check_rng(void)
 {
     int           ret;
-    int           i; 
+    int           i;
     byte          in[RANDOM_BYTE_SZ];
     byte          out[RANDOM_BYTE_SZ];
 
@@ -955,8 +962,11 @@ static int check_aesctr(void)
         printf("mcapi aes-128 ctr encrypt failed\n");
         return -1;
     }
-    wc_AesCtrEncrypt(&defAes, out2, ourData, AES_TEST_SIZE);
-
+    ret = wc_AesCtrEncrypt(&defAes, out2, ourData, AES_TEST_SIZE);
+    if (ret != 0) {
+        printf("mcapi aes-128 ctr encrypt set failed\n");
+        return -1;
+    }
     if (memcmp(out1, out2, AES_TEST_SIZE) != 0) {
         printf("mcapi aes-128 ctr encrypt cmp failed\n");
         return -1;
@@ -1002,8 +1012,11 @@ static int check_aesctr(void)
         printf("mcapi aes-192 ctr encrypt failed\n");
         return -1;
     }
-    wc_AesCtrEncrypt(&defAes, out2, ourData, AES_TEST_SIZE);
-
+    ret = wc_AesCtrEncrypt(&defAes, out2, ourData, AES_TEST_SIZE);
+    if (ret != 0) {
+        printf("mcapi aes-192 ctr encrypt set failed\n");
+        return -1;
+    }
     if (memcmp(out1, out2, AES_TEST_SIZE) != 0) {
         printf("mcapi aes-192 ctr encrypt cmp failed\n");
         return -1;
@@ -1049,8 +1062,11 @@ static int check_aesctr(void)
         printf("mcapi aes-256 ctr encrypt failed\n");
         return -1;
     }
-    wc_AesCtrEncrypt(&defAes, out2, ourData, AES_TEST_SIZE);
-
+    ret = wc_AesCtrEncrypt(&defAes, out2, ourData, AES_TEST_SIZE);
+    if (ret != 0) {
+        printf("mcapi aes-256 ctr encrypt set failed\n");
+        return -1;
+    }
     if (memcmp(out1, out2, AES_TEST_SIZE) != 0) {
         printf("mcapi aes-256 ctr encrypt cmp failed\n");
         return -1;
@@ -1326,7 +1342,7 @@ static int check_rsa(void)
         return -1;
     }
 
-    ret = CRYPT_RSA_PrivateDecrypt(&mcRsa, out2, sizeof(out2), out1, ret); 
+    ret = CRYPT_RSA_PrivateDecrypt(&mcRsa, out2, sizeof(out2), out1, ret);
     if (ret < 0) {
         printf("mcapi rsa private derypt failed\n");
         return -1;
@@ -1348,7 +1364,7 @@ static int check_rsa(void)
         printf("mcapi rsa free failed\n");
         return -1;
     }
-    
+
     printf("rsa         mcapi test passed\n");
 
     return 0;
@@ -1358,7 +1374,7 @@ static int check_rsa(void)
 /* check mcapi ecc */
 static int check_ecc(void)
 {
-    CRYPT_ECC_CTX userA; 
+    CRYPT_ECC_CTX userA;
     CRYPT_ECC_CTX userB;
     int           ret;
     byte          sharedA[100];
@@ -1463,7 +1479,7 @@ static int check_ecc(void)
         printf("mcapi ecc public export failed\n");
         return -1;
     }
-  
+
     ret = CRYPT_ECC_PublicImport(&userB, sharedA, usedA);
     if (ret != 0) {
         printf("mcapi ecc public import failed\n");

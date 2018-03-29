@@ -1,6 +1,6 @@
 /* echoclient.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -25,32 +25,27 @@
 #endif
 
 #include <cyassl/ctaocrypt/settings.h>
-
 /* let's use cyassl layer AND cyassl openssl layer */
 #include <cyassl/ssl.h>
 #include <cyassl/openssl/ssl.h>
+#ifdef CYASSL_DTLS
+    #include <cyassl/error-ssl.h>
+#endif
 
 #if defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET)
         #include <stdio.h>
         #include <string.h>
-
-        #if !defined(WOLFSSL_MDK_ARM)
-            #include "cmsis_os.h"
-            #include "rl_net.h"
-        #else
-            #include "rtl.h"
-            #include "wolfssl_MDK_ARM.h"
-        #endif
-        #if defined(WOLFSSL_MDK_SHELL)
-            char * wolfssl_fgets ( char * str, int num, FILE * f ) ;
-            #define fgets wolfssl_fgets
-        #endif
+        #include "cmsis_os.h"
+        #include "rl_fs.h"
+        #include "rl_net.h"
+        #include "wolfssl_MDK_ARM.h"
 #endif
-
 
 #include <cyassl/test.h>
 
-#include "examples/echoclient/echoclient.h"
+#include <examples/echoclient/echoclient.h>
+
+#ifndef NO_WOLFSSL_CLIENT
 
 #ifdef WOLFSSL_ASYNC_CRYPT
     static int devId = INVALID_DEVID;
@@ -120,7 +115,7 @@ void echoclient_test(void* args)
 
 #if defined(CYASSL_DTLS)
     method  = DTLSv1_2_client_method();
-#elif  !defined(NO_TLS)
+#elif !defined(NO_TLS)
     method = CyaSSLv23_client_method();
 #elif defined(WOLFSSL_ALLOW_SSLV3)
     method = SSLv3_client_method();
@@ -131,11 +126,11 @@ void echoclient_test(void* args)
 
 #ifndef NO_FILESYSTEM
     #ifndef NO_RSA
-    if (SSL_CTX_load_verify_locations(ctx, caCertFile, 0) != SSL_SUCCESS)
+    if (SSL_CTX_load_verify_locations(ctx, caCertFile, 0) != WOLFSSL_SUCCESS)
         err_sys("can't load ca file, Please run from wolfSSL home dir");
     #endif
     #ifdef HAVE_ECC
-        if (SSL_CTX_load_verify_locations(ctx, eccCertFile, 0) != SSL_SUCCESS)
+        if (SSL_CTX_load_verify_locations(ctx, caEccCertFile, 0) != WOLFSSL_SUCCESS)
             err_sys("can't load ca file, Please run from wolfSSL home dir");
     #endif
 #elif !defined(NO_CERTS)
@@ -159,7 +154,7 @@ void echoclient_test(void* args)
         #else
             defaultCipherList = "PSK-AES128-CBC-SHA256";
         #endif
-        if (CyaSSL_CTX_set_cipher_list(ctx,defaultCipherList) !=SSL_SUCCESS)
+        if (CyaSSL_CTX_set_cipher_list(ctx,defaultCipherList) !=WOLFSSL_SUCCESS)
             err_sys("client can't set cipher list 2");
 #endif
     }
@@ -169,7 +164,7 @@ void echoclient_test(void* args)
 #endif
 
 #if defined(WOLFSSL_MDK_ARM)
-    CyaSSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, 0);
+    CyaSSL_CTX_set_verify(ctx, WOLFSSL_VERIFY_NONE, 0);
 #endif
 
 #ifdef WOLFSSL_ASYNC_CRYPT
@@ -192,7 +187,7 @@ void echoclient_test(void* args)
     do {
         err = 0; /* Reset error */
         ret = SSL_connect(ssl);
-        if (ret != SSL_SUCCESS) {
+        if (ret != WOLFSSL_SUCCESS) {
             err = SSL_get_error(ssl, 0);
         #ifdef WOLFSSL_ASYNC_CRYPT
             if (err == WC_PENDING_E) {
@@ -202,7 +197,7 @@ void echoclient_test(void* args)
         #endif
         }
     } while (err == WC_PENDING_E);
-    if (ret != SSL_SUCCESS) {
+    if (ret != WOLFSSL_SUCCESS) {
         printf("SSL_connect error %d, %s\n", err,
             ERR_error_string(err, buffer));
         err_sys("SSL_connect failed");
@@ -264,6 +259,14 @@ void echoclient_test(void* args)
                 fflush(fout) ;
                 sendSz -= ret;
             }
+#ifdef CYASSL_DTLS
+            else if (wolfSSL_dtls(ssl) && err == DECRYPT_ERROR) {
+                /* This condition is OK. The packet should be dropped
+                 * silently when there is a decrypt or MAC error on
+                 * a DTLS record. */
+                sendSz = 0;
+            }
+#endif
             else {
                 printf("SSL_read msg error %d, %s\n", err,
                     ERR_error_string(err, buffer));
@@ -313,6 +316,7 @@ void echoclient_test(void* args)
     ((func_args*)args)->return_code = 0;
 }
 
+#endif /* !NO_WOLFSSL_CLIENT */
 
 /* so overall tests can pull in test function */
 #ifndef NO_MAIN_DRIVER
@@ -338,7 +342,9 @@ void echoclient_test(void* args)
 #ifndef CYASSL_TIRTOS
         ChangeToWolfRoot();
 #endif
+#ifndef NO_WOLFSSL_CLIENT
         echoclient_test(&args);
+#endif
 
         CyaSSL_Cleanup();
 
@@ -351,5 +357,3 @@ void echoclient_test(void* args)
     }
 
 #endif /* NO_MAIN_DRIVER */
-
-

@@ -1,6 +1,6 @@
 /* suites.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -37,14 +37,15 @@
 #define MAX_COMMAND_SZ 240
 #define MAX_SUITE_SZ 80
 #define NOT_BUILT_IN -123
-#if defined(NO_OLD_TLS) || !defined(WOLFSSL_ALLOW_SSLV3)
+#if defined(NO_OLD_TLS) || !defined(WOLFSSL_ALLOW_SSLV3) || \
+    !defined(WOLFSSL_ALLOW_TLSV10)
     #define VERSION_TOO_OLD -124
 #endif
 
 #include "examples/client/client.h"
 #include "examples/server/server.h"
 
-
+#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT)
 static WOLFSSL_CTX* cipherSuiteCtx = NULL;
 static char nonblockFlag[] = "-N";
 static char noVerifyFlag[] = "-d";
@@ -54,56 +55,55 @@ static char flagSep[] = " ";
     static char portFlag[] = "-p";
     static char svrPort[] = "0";
 #endif
-static char forceDefCipherListFlag[] = "-H";
+static char forceDefCipherListFlag[] = "-HdefCipherList";
 
 #ifdef WOLFSSL_ASYNC_CRYPT
     static int devId = INVALID_DEVID;
 #endif
 
 
-#ifndef WOLFSSL_ALLOW_SSLV3
-/* if the protocol version is sslv3 return 1, else 0 */
-static int IsSslVersion(const char* line)
+#ifdef VERSION_TOO_OLD
+static int GetTlsVersion(const char* line)
 {
+    int version = -1;
     const char* find = "-v ";
     const char* begin = strstr(line, find);
 
     if (begin) {
-        int version = -1;
-
         begin += 3;
 
         version = atoi(begin);
-
-        if (version == 0)
-            return 1;
     }
+    return version;
+}
 
-    return 0;
+#ifndef WOLFSSL_ALLOW_SSLV3
+/* if the protocol version is sslv3 return 1, else 0 */
+static int IsSslVersion(const char* line)
+{
+    int version = GetTlsVersion(line);
+    return (version == 0) ? 1 : 0;
 }
 #endif /* !WOLFSSL_ALLOW_SSLV3 */
+
+#ifndef WOLFSSL_ALLOW_TLSV10
+/* if the protocol version is TLSv1.0 return 1, else 0 */
+static int IsTls10Version(const char* line)
+{
+    int version = GetTlsVersion(line);
+    return (version == 1) ? 1 : 0;
+}
+#endif /* !WOLFSSL_ALLOW_TLSV10 */
 
 #ifdef NO_OLD_TLS
 /* if the protocol version is less than tls 1.2 return 1, else 0 */
 static int IsOldTlsVersion(const char* line)
 {
-    const char* find = "-v ";
-    const char* begin = strstr(line, find);
-
-    if (begin) {
-        int version = -1;
-
-        begin += 3;
-
-        version = atoi(begin);
-
-        if (version < 3)
-            return 1;
-    }
-
-    return 0;
+    int version = GetTlsVersion(line);
+    return (version < 3) ? 1 : 0;
 }
 #endif /* NO_OLD_TLS */
+#endif /* VERSION_TOO_OLD */
 
 
 /* if the cipher suite on line is valid store in suite and return 1, else 0 */
@@ -143,13 +143,13 @@ static int IsValidCipherSuite(const char* line, char* suite)
     #ifdef HAVE_QSH
         if (XSTRNCMP(suite, "QSH", 3) == 0) {
             if (wolfSSL_CTX_set_cipher_list(cipherSuiteCtx, suite + 4)
-                                                                 != SSL_SUCCESS)
+                                                                 != WOLFSSL_SUCCESS)
             return 0;
         }
     #endif
 
     if (found) {
-        if (wolfSSL_CTX_set_cipher_list(cipherSuiteCtx, suite) == SSL_SUCCESS)
+        if (wolfSSL_CTX_set_cipher_list(cipherSuiteCtx, suite) == WOLFSSL_SUCCESS)
             valid = 1;
     }
 
@@ -182,6 +182,9 @@ static int execute_test_case(int svr_argc, char** svr_argv,
     int         i;
     size_t      added;
     static      int tests = 1;
+#if !defined(USE_WINDOWS_API) && !defined(WOLFSSL_TIRTOS)
+    char        portNumber[8];
+#endif
 
     /* Is Valid Cipher and Version Checks */
     /* build command list for the Is checks below */
@@ -205,6 +208,14 @@ static int execute_test_case(int svr_argc, char** svr_argv,
 
 #ifndef WOLFSSL_ALLOW_SSLV3
     if (IsSslVersion(commandLine) == 1) {
+        #ifdef DEBUG_SUITE_TESTS
+            printf("protocol version on line %s is too old\n", commandLine);
+        #endif
+        return VERSION_TOO_OLD;
+    }
+#endif
+#ifndef WOLFSSL_ALLOW_TLSV10
+    if (IsTls10Version(commandLine) == 1) {
         #ifdef DEBUG_SUITE_TESTS
             printf("protocol version on line %s is too old\n", commandLine);
         #endif
@@ -298,7 +309,6 @@ static int execute_test_case(int svr_argc, char** svr_argv,
         if (cliArgs.argc + 2 > MAX_ARGS)
             printf("cannot add the magic port number flag to client\n");
         else {
-            char portNumber[8];
             snprintf(portNumber, sizeof(portNumber), "%d", ready.port);
             cli_argv[cliArgs.argc++] = portFlag;
             cli_argv[cliArgs.argc++] = portNumber;
@@ -503,10 +513,12 @@ static void test_harness(void* vargs)
     free(script);
     args->return_code = 0;
 }
+#endif /* !NO_WOLFSSL_SERVER && !NO_WOLFSSL_CLIENT */
 
 
 int SuiteTest(void)
 {
+#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT)
     func_args args;
     char argv0[2][80];
     char* myArgv[2];
@@ -535,7 +547,7 @@ int SuiteTest(void)
 #ifdef WOLFSSL_STATIC_MEMORY
     if (wolfSSL_CTX_load_static_memory(&cipherSuiteCtx, NULL,
                                                    memory, sizeof(memory), 0, 1)
-            != SSL_SUCCESS) {
+            != WOLFSSL_SUCCESS) {
         printf("unable to load static memory and create ctx");
         args.return_code = EXIT_FAILURE;
         goto exit;
@@ -564,6 +576,36 @@ int SuiteTest(void)
     /* any extra cases will need another argument */
     args.argc = 2;
 
+#ifdef WOLFSSL_TLS13
+    /* add TLSv13 extra suites */
+    strcpy(argv0[1], "tests/test-tls13.conf");
+    printf("starting TLSv13 extra cipher suite tests\n");
+    test_harness(&args);
+    if (args.return_code != 0) {
+        printf("error from script %d\n", args.return_code);
+        exit(EXIT_FAILURE);
+    }
+    #ifdef HAVE_ECC
+    /* add TLSv13 ECC extra suites */
+    strcpy(argv0[1], "tests/test-tls13-ecc.conf");
+    printf("starting TLSv13 ECC extra cipher suite tests\n");
+    test_harness(&args);
+    if (args.return_code != 0) {
+        printf("error from script %d\n", args.return_code);
+        exit(EXIT_FAILURE);
+    }
+    #endif
+#endif
+#if defined(HAVE_CURVE25519) && defined(HAVE_ED25519)
+    /* add ED25519 certificate cipher suite tests */
+    strcpy(argv0[1], "tests/test-ed25519.conf");
+    printf("starting ED25519 extra cipher suite tests\n");
+    test_harness(&args);
+    if (args.return_code != 0) {
+        printf("error from script %d\n", args.return_code);
+        exit(EXIT_FAILURE);
+    }
+#endif
 #ifdef WOLFSSL_DTLS
     /* add dtls extra suites */
     strcpy(argv0[1], "tests/test-dtls.conf");
@@ -634,6 +676,7 @@ exit:
 #endif
 
     return args.return_code;
+#else
+    return NOT_COMPILED_IN;
+#endif /* !NO_WOLFSSL_SERVER && !NO_WOLFSSL_CLIENT */
 }
-
-
