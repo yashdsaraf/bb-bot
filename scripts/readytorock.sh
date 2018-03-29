@@ -33,7 +33,9 @@ else
     ./createtgz.sh
 fi
 ./mkzip.sh
-# Source forge is temporarily down
-#./sourceforge-release.py
+if [[ $TRAVIS_BRANCH == "master" ]]
+    then
+    ./sourceforge-release.py
+fi
 echo "Files to deploy --"
 ls -lh ../bbx/out/*
