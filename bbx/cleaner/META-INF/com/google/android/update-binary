@@ -85,7 +85,7 @@ if [ "$?" -eq "0" ]
     done
 fi
 
-( mount_ /data 
+( mount_ /data
 mount_ /cache ) 2>/dev/null
 
 #Redirect all errors to LOGFILE
@@ -150,7 +150,9 @@ unset i
 SUIMG=$(
     ls /data/su.img || ls /cache/su.img
 ) 2>/dev/null
-MAGISK=$(ls /data/magisk.img) 2>/dev/null
+MAGISK=$(
+    ls /data/magisk.img || ls /data/adb/magisk.img
+) 2>/dev/null
 
 if [ ! -z "$SUIMG" ]
     then
@@ -195,10 +197,12 @@ if [ $TOTALSYMLINKS -gt 0 ]
 fi
 
 if [ -d /magisk/bbxyds/system/xbin ]
-    then touch /magisk/bbxyds/remove
+    then
+    ui_print "Setting up busybox in magisk for removal --"
+    touch /magisk/bbxyds/remove
 fi
 
-# cd to the root directory to avoid "device or resource busy" errors while unmounting 
+# cd to the root directory to avoid "device or resource busy" errors while unmounting
 cd /
 
 ui_print "Unmounting /system --"

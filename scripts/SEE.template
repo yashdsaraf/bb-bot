@@ -368,7 +368,7 @@ BBX=$BBTEMP/$BBX
 POSSIBLE_INSTALLDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin"
 if [ $INSTALLDIR == "none" ]
     then
-    if [ -f /data/magisk.img ]
+    if [ -f /data/magisk.img -o -f /data/adb/magisk.img ]
         then
         echo "  "
         echo "** Your device seems to have magisk installed!"
@@ -528,7 +528,7 @@ if [ $ONLYCLEAN -ne 1 ]
 
     echo "Adding common system users and groups --"
     etc=$(
-        ls -d /system/etc || ls -d /etc 
+        ls -d /system/etc || ls -d /etc
     ) 2>/dev/null
 
     if [ ! -z $etc -a -d $etc -a -w $etc ]

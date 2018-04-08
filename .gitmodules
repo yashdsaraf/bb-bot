@@ -1,0 +1,3 @@
+[submodule "bbx/magisk"]
+	path = bbx/magisk
+	url = https://github.com/topjohnwu/magisk-module-template
