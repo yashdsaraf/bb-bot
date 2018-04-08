@@ -1,4 +1,38 @@
 
+##################
+
+# Index:
+
+# 1. Load magisk util_functions if found
+# 2. Mount /system
+# 3. Detect device architecture
+# 4. Read and interpret bbx.conf if found
+# 5. Extract busybox and all other necessary bins to a temporary directory and set appropriate permissions
+# 6. Mount systemless images for SuperSU and Magisk
+# 7. Figure out an installation location
+#   7.1 Go with the location mentioned in bbx.conf if found
+#   7.2 Check for magisk and use it for installation if possible
+#   7.3 Check for SuperSU and use it for installation if possible
+#   7.4 Go with any of the possible installation directories
+# 8. Clean busybox in all the possible directories (including the current installation directory)
+# 9. Copy the binaries to installation directory
+# 10. Add OTA survival script if possible
+# 11. Add common users and groups
+# 12. Unmount system and any other images we might've mounted
+
+##################
+
+# Magisk specific vars
+MAGISK=false
+MAGISKBIN=/data/adb/magisk
+MAGISK_UTIL_FUNCTIONS=$MAGISKBIN/util_functions.sh
+
+if [ -f $MAGISK_UTIL_FUNCTIONS ]
+    then
+    . $MAGISK_UTIL_FUNCTIONS
+    MAGISK=true
+fi
+
 OPFD=$2
 BBZIP=$3
 INSTALLDIR="none"
@@ -8,35 +42,27 @@ VER=
 SELINUXPRESENT=0
 TMPDIR=/dev/tmp
 INSTALLER=$TMPDIR/install
-MAGISKINSTALL=false
-
-ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true || BOOTMODE=false
-$BOOTMODE || ps -A 2>/dev/null | grep zygote | grep -v grep >/dev/null && BOOTMODE=true
 
 # Add applets which should not be symlinked/installed to this list.
 # Separate applets using a single space.
 BLACKLISTED_APPLETS=" su "
 
 is_blacklisted() {
-    blacklisted=1
+    blacklisted=false
     for blacklisted_applet in $BLACKLISTED_APPLETS
     do
         if [ "$1" == "$blacklisted_applet" ]
         then
-            blacklisted=0
+            blacklisted=true
             break
         fi
     done
-    return $blacklisted
+    $blacklisted
 }
 
 ui_print() {
-    if $BOOTMODE
-        then echo "$1"
-    else
-        echo -e "ui_print $1\n
-        ui_print" >> /proc/self/fd/$OPFD
-    fi
+    echo -e "ui_print $1\n
+    ui_print" >> /proc/self/fd/$OPFD
     echo -e "$1" >> $LOGFILE
 }
 
@@ -107,6 +133,20 @@ set_permissions() {
     fi
 }
 
+require_new_magisk() {
+    ui_print "*******************************"
+    ui_print " Please install Magisk v15.0+! "
+    ui_print "*******************************"
+    exit 1
+}
+
+ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true || BOOTMODE=false
+$BOOTMODE || ps -A 2>/dev/null | grep zygote | grep -v grep >/dev/null && BOOTMODE=true
+
+if $BOOTMODE && ! $MAGISK
+    then require_new_magisk
+fi
+
 #embedded mode support
 if readlink /proc/$$/fd/$OPFD 2>/dev/null | grep /tmp >/dev/null
     then
@@ -169,9 +209,9 @@ FOUNDARCH="`grep -Eo "ro.product.cpu.abi(2)?=.+" /system/build.prop /default.pro
 check_arch
 
 # Temporary hack around for aarch64 segfaulting bb
-if [ "$ARCH" == "arm" -a "$BBFILE" == "busybox64" ]
-    then BBFILE=busybox
-fi
+# if [ "$ARCH" == "arm" -a "$BBFILE" == "busybox64" ]
+#     then BBFILE=busybox
+# fi
 
 ui_print "Checking if busybox needs to have SELinux support --"
 
@@ -259,12 +299,12 @@ do
 done
 unset i
 set_permissions xzdec 0555 0 2000 u:object_r:system_file:s0
-set_permissions magisk_install.sh 0555 0 2000 u:object_r:system_file:s0
 ./xzdec $BBFILE > busybox
 set_permissions ssl_helper 0555 0 2000 u:object_r:system_file:s0
 set_permissions busybox 0555 0 2000 u:object_r:system_file:s0
 rm $BBFILE xzdec
-export MAGISK_INSTALLER="sh $PWD/magisk_install.sh"
+
+# Mount SuperSU if found
 
 SUIMG=$(
     ls /data/su.img || ls /cache/su.img
@@ -278,42 +318,52 @@ elif [ -d /data/adb/su ]
     then ui_print "Systemless root detected (Running in SBIN mode) --"
 fi
 
-if [ -f /data/adb/magisk.img ]
-    then MAGISKDIR=/data/adb
-elif [ -f /data/magisk.img ]
-    then MAGISKDIR=/data
-else
-    MAGISKDIR=
-fi
+ui_print "  "
 
-if [ ! -z $MAGISKDIR ]
+# Mount magisk if found
+
+if $MAGISK
     then
-    ui_print "Magisk detected --"
-    ui_print "Extracting module.prop --"
-    unzip -o "$BBZIP" module.prop >/dev/null
-    error "Error while extracting files"
-    MAGISKBIN=$MAGISKDIR/magisk
-    MOUNTPATH=/magisk
-    IMG=$MAGISKDIR/magisk.img
+    OUTFD=$OPFD
+    MOUNTPATH=$TMPDIR/magisk_img
+    get_outfd
+    mount_partitions
+    api_level_arch_detect
+    $BOOTMODE && boot_actions || recovery_actions
+    MIN_VER=`grep_prop minMagisk $INSTALLER/module.prop`
+    [ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
+    MODID=`grep_prop id $INSTALLER/module.prop`
+    MODPATH=$MOUNTPATH/$MODID
+
+    ui_print "******************************"
+    ui_print "Powered by Magisk (@topjohnwu)"
+    ui_print "******************************"
+
+    request_zip_size_check "$BBZIP"
+    mount_magisk_img
+
+    rm -rf $MODPATH 2>/dev/null
+    mkdir -p $MODPATH
+
+    if [ $INSTALLDIR == "none" ]
+        then
+        INSTALLDIR=$MODPATH/system/xbin
+        mkdir -p $INSTALLDIR
+    fi
+
+    touch $MODPATH/auto_mount
+
+    cp -af $INSTALLER/module.prop $MODPATH/module.prop
     if $BOOTMODE
         then
-        MOUNTPATH=/dev/magisk_merge
-        IMG=$MAGISKDIR/magisk_merge.img
+        # Update info for Magisk Manager
+        mktouch /sbin/.core/img/$MODID/update
+        cp -af $INSTALLER/module.prop /sbin/.core/img/$MODID/module.prop
     fi
-    export MAGISKBIN MOUNTPATH IMG INSTALLER BOOTMODE INSTALLDIR LOGFILE
-    MAGISKINSTALLDIR=$($MAGISK_INSTALLER $OPFD)
-    error "Error while installing busybox using magisk"
-    if [ ! -z $MAGISKINSTALLDIR ]
-        then
-        INSTALLDIR=$MAGISKINSTALLDIR
-        MAGISKINSTALL=true
-    fi
-elif $BOOTMODE
-    then false
-    error "Magisk is not installed"
-fi
 
-ui_print "  "
+    set_perm_recursive  $MODPATH  0  0  0755  0644
+
+fi
 
 POSSIBLE_INSTALLDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin"
 if [ $INSTALLDIR == "none" ]
@@ -425,14 +475,19 @@ if [ ! -z $SULOOPDEV ]
     losetup -d $SULOOPDEV
     rmdir /su
 fi
-if $MAGISKINSTALL
+
+ui_print "Unmounting /system --"
+
+if $MAGISK
     then
-    $MAGISK_INSTALLER $OPFD cleanup || ui_print "Warning: Magisk cleanup failed!"
+    if ! $BOOTMODE
+        then recovery_cleanup
+    fi
 else
-    ui_print "Unmounting /system --"
     umount /system
 fi
-rm -rf $INSTALLER 2>/dev/null
+
+rm -rf $TMPDIR 2>/dev/null
 
 ui_print "  "
 ui_print "All DONE! -- Check $LOGFILE for more info"

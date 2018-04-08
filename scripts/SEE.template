@@ -326,9 +326,9 @@ if [ ! -z `getprop ro.product.cpu.abilist64` ]
 fi
 
 # Temporary hack around for aarch64 segfaulting bb
-if [ "$ARCH" == "arm" -a "$BBX" == "busybox64" ]
-    then BBX=busybox
-fi
+# if [ "$ARCH" == "arm" -a "$BBX" == "busybox64" ]
+#     then BBX=busybox
+# fi
 
 if [ -z $SELSTAT ]
     then SELSTAT=$SELINUXPRESENT

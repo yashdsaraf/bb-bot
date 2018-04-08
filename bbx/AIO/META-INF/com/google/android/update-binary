@@ -36,6 +36,6 @@ check_arch() {
 }
 
 unzip_files() {
-    unzip -o "$BBZIP" $ARCH/bins.md5 $ARCH/$BBFILE $ARCH/ssl_helper $ARCH/xzdec magisk_install.sh
+    unzip -o "$BBZIP" $ARCH/bins.md5 $ARCH/$BBFILE $ARCH/ssl_helper $ARCH/xzdec module.prop
     mv $ARCH/* .
 }

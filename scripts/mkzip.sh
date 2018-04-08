@@ -47,8 +47,8 @@ i=$TO_BUILD
 
 # echo -e "\\n$i\\n"
 echo "Zipping files --"
-cp ../addusergroup.sh ../88-busybox.sh ../module.prop ../magisk_install.sh .
-sed -i -e "s|^version=.*|version=v$VER|;s|^versionCode=.*|versionCode=$(date +%s)|"\
+cp ../addusergroup.sh ../88-busybox.sh ../magisk/module.prop .
+sed -i -e "s|^version=.*|version=v$VER|;s|^versionCode=.*|versionCode=${BUILD_TAG#*-}|"\
      module.prop
 if [[ $i == "boxemup" ]]
     then
