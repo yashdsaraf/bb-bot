@@ -1,0 +1,7 @@
+id=bbxyds
+name=Busybox by YashdSaraf
+version=
+versionCode=
+author=yashdsaraf
+description=Busybox built using custom uClibc toolchains by YashdSaraf @xda-developers.com, see bit.ly/bbxyds for details
+minMagisk=1500

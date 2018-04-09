@@ -16,7 +16,7 @@
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
 EXTRA=
-cd "$(realpath `dirname $0`/../bbx)"
+cd "$(realpath `dirname $0`/../installers)"
 # for i in arm x86 mips mipseb
 # do
 i=${TO_BUILD% *}

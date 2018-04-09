@@ -18,7 +18,7 @@
 # FLASHABLE ZIP CREATION
 SCRIPTDIR=$(realpath `dirname $0`)
 SIGNAPKDIR=$SCRIPTDIR/signapk
-cd "$SCRIPTDIR/../bbx"
+cd "$SCRIPTDIR/../installers"
 PEM=$SIGNAPKDIR/certificate.pem
 PK8=$SIGNAPKDIR/key.pk8
 SIGNAPKJAR=$SIGNAPKDIR/signapk.jar # Provided by https://github.com/appium/sign
@@ -45,31 +45,40 @@ cd workspace
 i=$TO_BUILD
 [[ $i == "mipseb" ]] && exit
 
+META_INF=META-INF/com/google/android
+UPDATEBIN=$META_INF/update-binary
+UPDATERSCRIPT=$META_INF/updater-script
+
 # echo -e "\\n$i\\n"
 echo "Zipping files --"
 cp ../addusergroup.sh ../88-busybox.sh ../magisk/module.prop .
 sed -i -e "s|^version=.*|version=v$VER|;s|^versionCode=.*|versionCode=$(tr -d '[:alpha:].-' <<< $VER)|"\
      module.prop
+mkdir -p $META_INF
+echo "#MAGISK" > $UPDATERSCRIPT
 if [[ $i == "boxemup" ]]
     then
-    cp -r ../AIO/META-INF .
-    cat ../common_install_code.sh >> META-INF/com/google/android/update-binary
+    cp ../universal_installer.sh $UPDATEBIN
+    cat ../base_installer.sh >> $UPDATEBIN
     sed -i -e "s|^STATUS=.*|STATUS=\"$STATUS\"|;s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|"\
-     META-INF/com/google/android/update-binary
+     $UPDATEBIN
     for i in arm x86 mips
     do cp -r ../Bins/$i .
     done
     mkzip $VER-UNIVERSAL
     rm -rf *
-    cp -r ../cleaner/META-INF .
+    mkdir -p $META_INF
+    cp ../cleaner.sh $UPDATEBIN
+    echo "#Check the update-binary for code" > $UPDATERSCRIPT
     mkzip CLEANER
 else
     ARCH=${i% *}
     ARCH64=${i#* }
-    cp -r ../META-INF ../Bins/$ARCH/* .
-    cat ../common_install_code.sh >> META-INF/com/google/android/update-binary
+    cp -r ../Bins/$ARCH/* .
+    cp ../normal_installer.sh $UPDATEBIN
+    cat ../base_installer.sh >> $UPDATEBIN
     sed -i -e "s|^ARCH=.*|ARCH=$ARCH|;s|^ARCH64=.*|ARCH64=$ARCH64|;s|^STATUS=.*|STATUS=\"$STATUS\"|;\
-    s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|" META-INF/com/google/android/update-binary $SCRIPTDIR/SEE.template
+    s|^DATE=.*|DATE=\"$DATE\"|;s|^VER=.*|VER=\"$VER\"|" $UPDATEBIN $SCRIPTDIR/SEE.template
     mkzip $VER-$(tr 'a-z' 'A-Z' <<< $ARCH)
     echo "Creating self extracting script --"
     rm -r bins.md5 META-INF xzdec

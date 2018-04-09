@@ -33,7 +33,7 @@ deploy:
   api_key:
     secure: $TOKEN
   file_glob: true
-  file: bbx/out/*
+  file: installers/out/*
   skip_cleanup: true
   on:
     all_branches: true

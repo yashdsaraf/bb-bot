@@ -23,5 +23,5 @@ i=${TO_BUILD% *}
 echo "Creating tars --"
 tarfile="Busybox-$VER-$(tr 'a-z' 'A-Z' <<<$i).tgz"
 tar zcf $tarfile *$i*
-mv $tarfile ../bbx/out
+mv $tarfile ../installers/out
 # done
