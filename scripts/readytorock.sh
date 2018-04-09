@@ -33,9 +33,10 @@ else
     ./createtgz.sh
 fi
 ./mkzip.sh
-if [[ $TRAVIS_BRANCH == "master" ]]
-    then
-    ./sourceforge-release.py
-fi
+# TODO: Find another mirror, builds are failing due to sourceforge
+# if [[ $TRAVIS_BRANCH == "master" ]]
+#     then
+#     ./sourceforge-release.py
+# fi
 echo "Files to deploy --"
 ls -lh ../installers/out/*
