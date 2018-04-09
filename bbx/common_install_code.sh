@@ -24,6 +24,7 @@
 
 # Magisk specific vars
 MAGISK=false
+MAGISKINSTALL=false
 MAGISKBIN=/data/adb/magisk
 MAGISK_UTIL_FUNCTIONS=$MAGISKBIN/util_functions.sh
 
@@ -324,6 +325,8 @@ ui_print "  "
 
 if $MAGISK
     then
+    ui_print "Magisk installation found --"
+    ui_print "  "
     OUTFD=$OPFD
     MOUNTPATH=$TMPDIR/magisk_img
     get_outfd
@@ -331,38 +334,32 @@ if $MAGISK
     api_level_arch_detect
     $BOOTMODE && boot_actions || recovery_actions
     MIN_VER=`grep_prop minMagisk $INSTALLER/module.prop`
-    [ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
-    MODID=`grep_prop id $INSTALLER/module.prop`
-    MODPATH=$MOUNTPATH/$MODID
-
-    ui_print "******************************"
-    ui_print "Powered by Magisk (@topjohnwu)"
-    ui_print "******************************"
-
-    request_zip_size_check "$BBZIP"
-    mount_magisk_img
-
-    rm -rf $MODPATH 2>/dev/null
-    mkdir -p $MODPATH
-
-    if [ $INSTALLDIR == "none" ]
+    if [ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ]
         then
-        INSTALLDIR=$MODPATH/system/xbin
-        mkdir -p $INSTALLDIR
+        MODID=`grep_prop id $INSTALLER/module.prop`
+        MODPATH=$MOUNTPATH/$MODID
+
+        request_zip_size_check "$BBZIP"
+        mount_magisk_img
+
+        rm -rf $MODPATH 2>/dev/null
+        mkdir -p $MODPATH
+
+        if [ $INSTALLDIR == "none" ]
+            then
+            INSTALLDIR=$MODPATH/system/xbin
+            mkdir -p $INSTALLDIR
+            MAGISKINSTALL=true
+            ui_print "  "
+            ui_print "******************************"
+            ui_print "Powered by Magisk (@topjohnwu)"
+            ui_print "******************************"
+            ui_print "  "
+        fi
+    else
+        ui_print "Please install magisk v15.0+ --"
+        ui_print "  "
     fi
-
-    touch $MODPATH/auto_mount
-
-    cp -af $INSTALLER/module.prop $MODPATH/module.prop
-    if $BOOTMODE
-        then
-        # Update info for Magisk Manager
-        mktouch /sbin/.core/img/$MODID/update
-        cp -af $INSTALLER/module.prop /sbin/.core/img/$MODID/module.prop
-    fi
-
-    set_perm_recursive  $MODPATH  0  0  0755  0644
-
 fi
 
 POSSIBLE_INSTALLDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin"
@@ -445,6 +442,22 @@ do
     fi
 done
 
+# Setup magisk post install settings
+if $MAGISKINSTALL
+    then
+    touch $MODPATH/auto_mount
+    cp -af $INSTALLER/module.prop $MODPATH/module.prop
+
+    if $BOOTMODE
+        then
+        # Update info for Magisk Manager
+        mktouch /sbin/.core/img/$MODID/update
+        cp -af $INSTALLER/module.prop /sbin/.core/img/$MODID/module.prop
+    fi
+fi
+
+set_perm_recursive  $MODPATH  0  0  0755  0644
+
 cd $INSTALLER
 if [ -d /system/addon.d -a -w /system/addon.d ]
     then
@@ -480,6 +493,7 @@ ui_print "Unmounting /system --"
 
 if $MAGISK
     then
+    unmount_magisk_img
     if ! $BOOTMODE
         then recovery_cleanup
     fi
