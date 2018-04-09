@@ -23,6 +23,7 @@
 ##################
 
 # Magisk specific vars
+BOOTMODE=false
 MAGISK=false
 MAGISKINSTALL=false
 MAGISKBIN=/data/adb/magisk
@@ -62,8 +63,13 @@ is_blacklisted() {
 }
 
 ui_print() {
-    echo -e "ui_print $1\n
-    ui_print" >> /proc/self/fd/$OPFD
+    if $BOOTMODE
+        then
+        echo $1 >> /proc/self/fd/$OPFD
+    else
+        echo -e "ui_print $1\n
+        ui_print" >> /proc/self/fd/$OPFD
+    fi
     echo -e "$1" >> $LOGFILE
 }
 
@@ -141,7 +147,7 @@ require_new_magisk() {
     exit 1
 }
 
-ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true || BOOTMODE=false
+ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true
 $BOOTMODE || ps -A 2>/dev/null | grep zygote | grep -v grep >/dev/null && BOOTMODE=true
 
 if $BOOTMODE && ! $MAGISK
