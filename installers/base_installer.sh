@@ -64,8 +64,7 @@ is_blacklisted() {
 
 ui_print() {
     if $BOOTMODE
-        then
-        echo $1 >> /proc/self/fd/$OPFD
+        then echo "$1"
     else
         echo -e "ui_print $1\n
         ui_print" >> /proc/self/fd/$OPFD
@@ -83,7 +82,7 @@ error() {
     ui_print " ***Abort!!*** "
     ui_print "Cause: $1"
     [ ! -z $LOGFILE ] && ui_print "Check $LOGFILE for errors"
-    if [ "$_mounted" == "no" ]
+    if ! $_mounted
         then umount /system
     fi
     exit "$ERRSTAT"
@@ -202,11 +201,11 @@ if (is_mounted /system)
     then
     mount_ -o rw,remount -t auto /system
     error "Error while mounting /system"
-    _mounted="yes"
+    _mounted=true
 else
     mount_ -o rw -t auto /system
     error "Error while mounting /system"
-    _mounted="no"
+    _mounted=false
 fi
 
 ui_print "Checking Architecture --"
@@ -340,7 +339,7 @@ if $MAGISK
     api_level_arch_detect
     $BOOTMODE && boot_actions || recovery_actions
     MIN_VER=`grep_prop minMagisk $INSTALLER/module.prop`
-    if [ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ]
+    if [ ! -z $MAGISK_VER_CODE ] && [ $MAGISK_VER_CODE -ge $MIN_VER ]
         then
         MODID=`grep_prop id $INSTALLER/module.prop`
         MODPATH=$MOUNTPATH/$MODID
@@ -348,11 +347,10 @@ if $MAGISK
         request_zip_size_check "$BBZIP"
         mount_magisk_img
 
-        rm -rf $MODPATH 2>/dev/null
-        mkdir -p $MODPATH
-
         if [ $INSTALLDIR == "none" ]
             then
+            rm -rf $MODPATH 2>/dev/null
+            mkdir -p $MODPATH
             INSTALLDIR=$MODPATH/system/xbin
             mkdir -p $INSTALLDIR
             MAGISKINSTALL=true
@@ -363,8 +361,9 @@ if $MAGISK
             ui_print "  "
         fi
     else
-        ui_print "Please install magisk v15.0+ --"
+        ui_print "Magisk older than v15.0 is **NOT** compatible with this installer --"
         ui_print "  "
+        sleep 0.5
     fi
 fi
 
@@ -435,7 +434,7 @@ do
     if $MAGISKINSTALL && $MAGISKBIN/magisk --list | grep $applet >/dev/null 2>&1
         then continue
     fi
-    if (is_blacklisted $applet)
+    if is_blacklisted $applet
     then continue
     fi
     ./busybox ln -s busybox $applet 2>/dev/null
@@ -460,9 +459,11 @@ if $MAGISKINSTALL
         mktouch /sbin/.core/img/$MODID/update
         cp -af $INSTALLER/module.prop /sbin/.core/img/$MODID/module.prop
     fi
+    # Default permissions for magisk based install
+    set_perm_recursive  $MODPATH  0  0  0755  0644
+elif [ ! -z $MODPATH ] && [ -d $MODPATH ]
+    then touch $MODPATH/remove # Mark busybox in magisk for removal
 fi
-
-set_perm_recursive  $MODPATH  0  0  0755  0644
 
 cd $INSTALLER
 if [ -d /system/addon.d -a -w /system/addon.d ]
@@ -478,7 +479,7 @@ etc=$(
     ls -d /system/etc || ls -d /etc
 ) 2>/dev/null
 
-if [ ! -z $etc -a -d $etc -a -w $etc ]
+if [ ! -z $etc ] && [ -d $etc -a -w $etc ]
     then
     ./busybox unzip -o "$BBZIP" addusergroup.sh >>$LOGFILE 2>&1
     . ./addusergroup.sh || ui_print "Warning: Could not add common system users and groups!"
@@ -510,5 +511,5 @@ fi
 rm -rf $TMPDIR 2>/dev/null
 
 ui_print "  "
-ui_print "All DONE! -- Check $LOGFILE for more info"
+ui_print "All done! -- Check $LOGFILE for more info"
 sleep 0.5

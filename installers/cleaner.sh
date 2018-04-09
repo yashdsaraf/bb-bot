@@ -198,8 +198,7 @@ fi
 
 if [ -d /magisk/bbxyds/system/xbin ]
     then
-    ui_print "Setting up busybox in magisk for removal --"
-    touch /magisk/bbxyds/remove
+    touch /magisk/bbxyds/remove # Mark busybox in magisk for removal
 fi
 
 # cd to the root directory to avoid "device or resource busy" errors while unmounting
