@@ -1,6 +1,6 @@
 /* curve25519.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -53,7 +53,7 @@ const curve25519_set_type curve25519_sets[] = {
 
 int wc_curve25519_make_key(WC_RNG* rng, int keysize, curve25519_key* key)
 {
-#ifdef FREESCALE_LTC_ECC        
+#ifdef FREESCALE_LTC_ECC
     const ECPoint* basepoint = wc_curve25519_GetBasePoint();
 #else
     unsigned char basepoint[CURVE25519_KEYSIZE] = {9};
@@ -66,6 +66,10 @@ int wc_curve25519_make_key(WC_RNG* rng, int keysize, curve25519_key* key)
     /* currently only a key size of 32 bytes is used */
     if (keysize != CURVE25519_KEYSIZE)
         return ECC_BAD_ARG_E;
+
+#ifndef FREESCALE_LTC_ECC
+    fe_init();
+#endif
 
     /* random number for private key */
     ret = wc_RNG_GenerateBlock(rng, key->k.point, keysize);
@@ -117,7 +121,7 @@ int wc_curve25519_shared_secret_ex(curve25519_key* private_key,
     if (private_key == NULL || public_key == NULL ||
         out == NULL || outlen == NULL || *outlen < CURVE25519_KEYSIZE)
         return BAD_FUNC_ARG;
-    
+
     /* avoid implementation fingerprinting */
     if (public_key->p.point[CURVE25519_KEYSIZE-1] > 0x7F)
         return ECC_BAD_ARG_E;
@@ -249,8 +253,7 @@ int wc_curve25519_import_public_ex(const byte* in, word32 inLen,
         XMEMCPY(key->p.point, in, inLen);
 
     key->dp = &curve25519_sets[0];
-    
-    
+
     /* LTC needs also Y coordinate - let's compute it */
     #ifdef FREESCALE_LTC_ECC
         ltc_pkha_ecc_point_t ltcPoint;
@@ -424,12 +427,15 @@ int wc_curve25519_init(curve25519_key* key)
     /* currently the format for curve25519 */
     key->dp = &curve25519_sets[0];
 
-    XMEMSET(key->k.point, 0, key->dp->size);    
+    XMEMSET(key->k.point, 0, key->dp->size);
     XMEMSET(key->p.point, 0, key->dp->size);
     #ifdef FREESCALE_LTC_ECC
         XMEMSET(key->k.pointY, 0, key->dp->size);
         XMEMSET(key->p.pointY, 0, key->dp->size);
+    #else
+        fe_init();
     #endif
+
     return 0;
 }
 

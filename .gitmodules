@@ -1,0 +1,3 @@
+[submodule "installers/magisk"]
+	path = installers/magisk
+	url = https://github.com/yashdsaraf/magisk-module-template

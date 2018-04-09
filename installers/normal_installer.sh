@@ -1,0 +1,36 @@
+#!/sbin/sh
+#BusyBox Installer
+#by YashdSaraf@XDA
+
+ARCH=
+ARCH64=
+
+print_banner() {
+    ui_print "================================================"
+    ui_print "   BusyBox $VER $ARCH ($STATUS: $DATE)   "
+    ui_print "-- by @YashdSaraf https://xda-developers.com --"
+    ui_print "      ----- http://bit.ly/bbxyds -----   "
+    ui_print "================================================"
+    ui_print "  "
+}
+
+check_arch() {
+    ui_print "Looking for => '$ARCH', found => '$FOUNDARCH'"
+
+    if [ "${FOUNDARCH::${#ARCH64}}" == "$ARCH64" ]
+        then
+        BBFILE=busybox64
+        ui_print "64 bit architecture detected --"
+    elif [ "${FOUNDARCH::${#ARCH}}" == "$ARCH" ]
+        then
+        BBFILE=busybox
+        ui_print "32 bit architecture detected --"
+    else
+        false
+        error "Wrong architecture found"
+    fi
+}
+
+unzip_files() {
+    unzip -o "$BBZIP" bins.md5 $BBFILE ssl_helper xzdec module.prop
+}

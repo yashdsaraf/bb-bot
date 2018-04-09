@@ -1,6 +1,6 @@
 /* ripemd.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -37,10 +37,14 @@
     #include <wolfcrypt/src/misc.c>
 #endif
 
+#include <wolfssl/wolfcrypt/error-crypt.h>
 
-
-void wc_InitRipeMd(RipeMd* ripemd)
+int wc_InitRipeMd(RipeMd* ripemd)
 {
+    if (ripemd == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
     ripemd->digest[0] = 0x67452301L;
     ripemd->digest[1] = 0xEFCDAB89L;
     ripemd->digest[2] = 0x98BADCFEL;
@@ -50,11 +54,13 @@ void wc_InitRipeMd(RipeMd* ripemd)
     ripemd->buffLen = 0;
     ripemd->loLen   = 0;
     ripemd->hiLen   = 0;
+
+    return 0;
 }
 
 
 /* for all */
-#define F(x, y, z)    (x ^ y ^ z) 
+#define F(x, y, z)    (x ^ y ^ z)
 #define G(x, y, z)    (z ^ (x & (y^z)))
 #define H(x, y, z)    (z ^ (x | ~y))
 #define I(x, y, z)    (y ^ (z & (x^y)))
@@ -188,7 +194,7 @@ static void Transform(RipeMd* ripemd)
     Subround(J, b2, c2, d2, e2, a2, ripemd->buffer[ 3], 12, k5);
     Subround(J, a2, b2, c2, d2, e2, ripemd->buffer[12],  6, k5);
 
-    Subround(I, e2, a2, b2, c2, d2, ripemd->buffer[ 6],  9, k6); 
+    Subround(I, e2, a2, b2, c2, d2, ripemd->buffer[ 6],  9, k6);
     Subround(I, d2, e2, a2, b2, c2, ripemd->buffer[11], 13, k6);
     Subround(I, c2, d2, e2, a2, b2, ripemd->buffer[ 3], 15, k6);
     Subround(I, b2, c2, d2, e2, a2, ripemd->buffer[ 7],  7, k6);
@@ -273,10 +279,16 @@ static INLINE void AddLength(RipeMd* ripemd, word32 len)
 }
 
 
-void wc_RipeMdUpdate(RipeMd* ripemd, const byte* data, word32 len)
+int wc_RipeMdUpdate(RipeMd* ripemd, const byte* data, word32 len)
 {
     /* do block size increments */
-    byte* local = (byte*)ripemd->buffer;
+    byte* local;
+
+    if (ripemd == NULL || (data == NULL && len > 0)) {
+        return BAD_FUNC_ARG;
+    }
+
+    local = (byte*)ripemd->buffer;
 
     while (len) {
         word32 add = min(len, RIPEMD_BLOCK_SIZE - ripemd->buffLen);
@@ -296,12 +308,19 @@ void wc_RipeMdUpdate(RipeMd* ripemd, const byte* data, word32 len)
             ripemd->buffLen = 0;
         }
     }
+    return 0;
 }
 
 
-void wc_RipeMdFinal(RipeMd* ripemd, byte* hash)
+int wc_RipeMdFinal(RipeMd* ripemd, byte* hash)
 {
-    byte* local = (byte*)ripemd->buffer;
+    byte* local;
+
+    if (ripemd == NULL || hash == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    local = (byte*)ripemd->buffer;
 
     AddLength(ripemd, ripemd->buffLen);               /* before adding pads */
 
@@ -319,10 +338,10 @@ void wc_RipeMdFinal(RipeMd* ripemd, byte* hash)
         ripemd->buffLen = 0;
     }
     XMEMSET(&local[ripemd->buffLen], 0, RIPEMD_PAD_SIZE - ripemd->buffLen);
-   
+
     /* put lengths in bits */
     ripemd->loLen = ripemd->loLen << 3;
-    ripemd->hiLen = (ripemd->loLen >> (8*sizeof(ripemd->loLen) - 3)) + 
+    ripemd->hiLen = (ripemd->loLen >> (8*sizeof(ripemd->loLen) - 3)) +
                  (ripemd->hiLen << 3);
 
     /* store lengths */
@@ -331,7 +350,7 @@ void wc_RipeMdFinal(RipeMd* ripemd, byte* hash)
     #endif
     /* ! length ordering dependent on digest endian type ! */
     XMEMCPY(&local[RIPEMD_PAD_SIZE], &ripemd->loLen, sizeof(word32));
-    XMEMCPY(&local[RIPEMD_PAD_SIZE + sizeof(word32)], &ripemd->hiLen, 
+    XMEMCPY(&local[RIPEMD_PAD_SIZE + sizeof(word32)], &ripemd->hiLen,
            sizeof(word32));
 
     Transform(ripemd);
@@ -340,7 +359,7 @@ void wc_RipeMdFinal(RipeMd* ripemd, byte* hash)
     #endif
     XMEMCPY(hash, ripemd->digest, RIPEMD_DIGEST_SIZE);
 
-    wc_InitRipeMd(ripemd);  /* reset state */
+    return wc_InitRipeMd(ripemd);  /* reset state */
 }
 
 

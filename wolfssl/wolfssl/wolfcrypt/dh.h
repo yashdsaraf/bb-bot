@@ -1,6 +1,6 @@
 /* dh.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -37,6 +37,12 @@
 #ifdef WOLFSSL_ASYNC_CRYPT
     #include <wolfssl/wolfcrypt/async.h>
 #endif
+typedef struct DhParams {
+    const byte* p;
+    word32      p_len;
+    const byte* g;
+    word32      g_len;
+} DhParams;
 
 /* Diffie-Hellman Key */
 typedef struct DhKey {
@@ -47,6 +53,22 @@ typedef struct DhKey {
 #endif
 } DhKey;
 
+
+#ifdef HAVE_FFDHE_2048
+WOLFSSL_API const DhParams* wc_Dh_ffdhe2048_Get(void);
+#endif
+#ifdef HAVE_FFDHE_3072
+WOLFSSL_API const DhParams* wc_Dh_ffdhe3072_Get(void);
+#endif
+#ifdef HAVE_FFDHE_4096
+WOLFSSL_API const DhParams* wc_Dh_ffdhe4096_Get(void);
+#endif
+#ifdef HAVE_FFDHE_6144
+WOLFSSL_API const DhParams* wc_Dh_ffdhe6144_Get(void);
+#endif
+#ifdef HAVE_FFDHE_8192
+WOLFSSL_API const DhParams* wc_Dh_ffdhe8192_Get(void);
+#endif
 
 WOLFSSL_API int wc_InitDhKey(DhKey* key);
 WOLFSSL_API int wc_InitDhKey_ex(DhKey* key, void* heap, int devId);
@@ -65,6 +87,8 @@ WOLFSSL_API int wc_DhSetKey(DhKey* key, const byte* p, word32 pSz, const byte* g
 WOLFSSL_API int wc_DhParamsLoad(const byte* input, word32 inSz, byte* p,
                             word32* pInOutSz, byte* g, word32* gInOutSz);
 WOLFSSL_API int wc_DhCheckPubKey(DhKey* key, const byte* pub, word32 pubSz);
+WOLFSSL_API int wc_DhCheckPubKey_ex(DhKey* key, const byte* pub, word32 pubSz,
+                            const byte* prime, word32 primeSz);
 
 #ifdef __cplusplus
     } /* extern "C" */

@@ -15,14 +15,18 @@
 # along with BB-Bot.  If not, see <http://www.gnu.org/licenses/>.
 
 ##SET TOOLCHAIN NAMES
-ARM=$TOOLCHAINDIR/armhf-uClibc
+ARM=$TOOLCHAINDIR/arm-rorschack-linux-uclibcgnueabi
+#ARM=$TOOLCHAINDIR/armhf-uClibc
 #ARM=$TOOLCHAINDIR/arm-uClibc
-ARM64=$TOOLCHAINDIR/aarch64-uClibc
+ARM64=$TOOLCHAINDIR/aarch64-rorschack-linux-uclibc
+#ARM64=$TOOLCHAINDIR/aarch64-uClibc
 MIPS64=$TOOLCHAINDIR/mips64el-uClibc
 MIPS=$TOOLCHAINDIR/mipsel-uClibc
 MIPSEB=$TOOLCHAINDIR/mipseb-uClibc
-X86=$TOOLCHAINDIR/i586-uClibc
-X86_64=$TOOLCHAINDIR/x86_64-uClibc
+X86=$TOOLCHAINDIR/i586-rorschack-linux-uclibc
+#X86=$TOOLCHAINDIR/i586-uClibc
+X86_64=$TOOLCHAINDIR/x86_64-rorschack-linux-uclibc
+#X86_64=$TOOLCHAINDIR/x86_64-uClibc
 ARMMUSL=$TOOLCHAINDIR/arm-musl
 X86MUSL=$TOOLCHAINDIR/i586-musl
 MIPSMUSL=$TOOLCHAINDIR/mipsel-musl

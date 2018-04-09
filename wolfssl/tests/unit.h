@@ -1,6 +1,6 @@
 /* unit.c API unit tests driver
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -46,8 +46,8 @@
 } while(0)
 
 #define AssertInt(x, y, op, er) do {                                           \
-    int _x = x;                                                                \
-    int _y = y;                                                                \
+    int _x = (int)x;                                                                \
+    int _y = (int)y;                                                                \
                                                                                \
     Assert(_x op _y, ("%s " #op " %s", #x, #y), ("%d " #er " %d", _x, _y));    \
 } while(0)

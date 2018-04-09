@@ -37,7 +37,7 @@ gcd_ () {
     done
 }
 
-FILENAME="$SCRIPTDIR/../bbx/out/Busybox-installer-$ARCH.bin"
+FILENAME="$SCRIPTDIR/../installers/out/Busybox-installer-$ARCH.bin"
 BINDIR=$TEMP_DIR/bin
 DECOMPRESSOR=$BINDIR/7zr
 BBFILE=$TEMP_DIR/bbx.7z

@@ -21,7 +21,7 @@ cd "$(realpath `dirname $0`)"
 echo -e "\n\nStarting BB-Bot build $BUILD_TAG ${TO_BUILD}\n\n"
 TOOLCHAINDIR="$PWD/toolchains"
 . ./toolchain-exports.sh
-mkdir -p ../out ../bbx/out
+mkdir -p ../out ../installers/out
 if [[ $TO_BUILD == "boxemup" ]]
     then
     ./settags.sh
@@ -33,7 +33,9 @@ else
     ./createtgz.sh
 fi
 ./mkzip.sh
-# Source forge is temporarily down
-#./sourceforge-release.py
+if [[ $TRAVIS_BRANCH == "master" ]]
+    then
+    ./sourceforge-release.py
+fi
 echo "Files to deploy --"
-ls -lh ../bbx/out/*
+ls -lh ../installers/out/*

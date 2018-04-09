@@ -1,6 +1,6 @@
 /* crl.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -38,7 +38,7 @@ WOLFSSL_LOCAL int  InitCRL(WOLFSSL_CRL*, WOLFSSL_CERT_MANAGER*);
 WOLFSSL_LOCAL void FreeCRL(WOLFSSL_CRL*, int dynamic);
 
 WOLFSSL_LOCAL int  LoadCRL(WOLFSSL_CRL* crl, const char* path, int type, int mon);
-WOLFSSL_LOCAL int  BufferLoadCRL(WOLFSSL_CRL*, const byte*, long, int);
+WOLFSSL_LOCAL int  BufferLoadCRL(WOLFSSL_CRL*, const byte*, long, int, int);
 WOLFSSL_LOCAL int  CheckCertCRL(WOLFSSL_CRL*, DecodedCert*);
 
 

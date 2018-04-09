@@ -1,0 +1,41 @@
+#!/sbin/sh
+#BusyBox All-Archs Installer
+#by YashdSaraf@XDA
+
+print_banner() {
+    ui_print "================================================"
+    ui_print "   BusyBox $VER Universal ($STATUS: $DATE)      "
+    ui_print "-- by @YashdSaraf https://xda-developers.com --"
+    ui_print "      ----- http://bit.ly/bbxyds -----   "
+    ui_print "================================================"
+    ui_print "  "
+}
+
+check_arch() {
+    ARCH="none"
+    for i in arm x86 mips
+    do
+        if [ "${FOUNDARCH::${#i}}" == "$i" ]
+            then
+            ARCH="$i"
+            BBFILE=busybox
+            if echo $FOUNDARCH | grep -E "${ARCH}(_)?64" >/dev/null 2>&1
+                then
+                BBFILE=busybox64
+                ui_print "** $ARCH ** 64 bit architecture detected --"
+            else
+                ui_print "** $ARCH ** 32 bit architecture detected --"
+            fi
+            break
+        fi
+    done
+    unset i
+
+    [ "$ARCH" != "none" ]
+    error "Unknown architecture detected"
+}
+
+unzip_files() {
+    unzip -o "$BBZIP" $ARCH/bins.md5 $ARCH/$BBFILE $ARCH/ssl_helper $ARCH/xzdec module.prop
+    mv $ARCH/* .
+}

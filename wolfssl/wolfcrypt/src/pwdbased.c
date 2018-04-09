@@ -1,6 +1,6 @@
 /* pwdbased.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -28,22 +28,6 @@
 
 #ifndef NO_PWDBASED
 
-#ifdef WOLFSSL_PIC32MZ_HASH
-    #ifndef NO_MD5
-        #define wc_InitMd5   wc_InitMd5_sw
-        #define wc_Md5Update wc_Md5Update_sw
-        #define wc_Md5Final  wc_Md5Final_sw
-    #endif /* NO_MD5 */
-
-    #define wc_InitSha   wc_InitSha_sw
-    #define wc_ShaUpdate wc_ShaUpdate_sw
-    #define wc_ShaFinal  wc_ShaFinal_sw
-
-    #define wc_InitSha256   wc_InitSha256_sw
-    #define wc_Sha256Update wc_Sha256Update_sw
-    #define wc_Sha256Final  wc_Sha256Final_sw
-#endif
-
 #include <wolfssl/wolfcrypt/pwdbased.h>
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/integer.h>
@@ -65,20 +49,20 @@
 int wc_PBKDF1(byte* output, const byte* passwd, int pLen, const byte* salt,
            int sLen, int iterations, int kLen, int hashType)
 {
-    Sha  sha;
+    wc_Sha  sha;
 #ifndef NO_MD5
-    Md5  md5;
+    wc_Md5  md5;
 #endif
-    int  hLen = (int)SHA_DIGEST_SIZE;
+    int  hLen = (int)WC_SHA_DIGEST_SIZE;
     int  i, ret = 0;
-    byte buffer[SHA_DIGEST_SIZE];  /* max size */
+    byte buffer[WC_SHA_DIGEST_SIZE];  /* max size */
 
-    if (hashType != MD5 && hashType != SHA)
+    if (hashType != WC_MD5 && hashType != WC_SHA)
         return BAD_FUNC_ARG;
 
 #ifndef NO_MD5
-    if (hashType == MD5)
-        hLen = (int)MD5_DIGEST_SIZE;
+    if (hashType == WC_MD5)
+        hLen = (int)WC_MD5_DIGEST_SIZE;
 #endif
 
     if ((kLen > hLen) || (kLen < 0))
@@ -89,14 +73,26 @@ int wc_PBKDF1(byte* output, const byte* passwd, int pLen, const byte* salt,
 
     switch (hashType) {
 #ifndef NO_MD5
-        case MD5:
-            wc_InitMd5(&md5);
-            wc_Md5Update(&md5, passwd, pLen);
-            wc_Md5Update(&md5, salt,   sLen);
-            wc_Md5Final(&md5,  buffer);
+        case WC_MD5:
+            ret = wc_InitMd5(&md5);
+            if (ret != 0) {
+                return ret;
+            }
+            ret = wc_Md5Update(&md5, passwd, pLen);
+            if (ret != 0) {
+                return ret;
+            }
+            ret = wc_Md5Update(&md5, salt,   sLen);
+            if (ret != 0) {
+                return ret;
+            }
+            ret = wc_Md5Final(&md5,  buffer);
+            if (ret != 0) {
+                return ret;
+            }
             break;
 #endif /* NO_MD5 */
-        case SHA:
+        case WC_SHA:
         default:
             ret = wc_InitSha(&sha);
             if (ret != 0)
@@ -108,14 +104,20 @@ int wc_PBKDF1(byte* output, const byte* passwd, int pLen, const byte* salt,
     }
 
     for (i = 1; i < iterations; i++) {
-        if (hashType == SHA) {
+        if (hashType == WC_SHA) {
             wc_ShaUpdate(&sha, buffer, hLen);
             wc_ShaFinal(&sha,  buffer);
         }
 #ifndef NO_MD5
         else {
-            wc_Md5Update(&md5, buffer, hLen);
-            wc_Md5Final(&md5,  buffer);
+            ret = wc_Md5Update(&md5, buffer, hLen);
+            if (ret != 0) {
+                return ret;
+            }
+            ret = wc_Md5Final(&md5,  buffer);
+            if (ret != 0) {
+                return ret;
+            }
         }
 #endif
     }
@@ -132,23 +134,23 @@ int GetDigestSize(int hashType)
 
     switch (hashType) {
 #ifndef NO_MD5
-        case MD5:
-            hLen = MD5_DIGEST_SIZE;
+        case WC_MD5:
+            hLen = WC_MD5_DIGEST_SIZE;
             break;
 #endif
 #ifndef NO_SHA
-        case SHA:
-            hLen = SHA_DIGEST_SIZE;
+        case WC_SHA:
+            hLen = WC_SHA_DIGEST_SIZE;
             break;
 #endif
 #ifndef NO_SHA256
-        case SHA256:
-            hLen = SHA256_DIGEST_SIZE;
+        case WC_SHA256:
+            hLen = WC_SHA256_DIGEST_SIZE;
             break;
 #endif
 #ifdef WOLFSSL_SHA512
-        case SHA512:
-            hLen = SHA512_DIGEST_SIZE;
+        case WC_SHA512:
+            hLen = WC_SHA512_DIGEST_SIZE;
             break;
 #endif
         default:
@@ -169,7 +171,7 @@ int wc_PBKDF2(byte* output, const byte* passwd, int pLen, const byte* salt,
 #ifdef WOLFSSL_SMALL_STACK
     byte*  buffer;
 #else
-    byte   buffer[MAX_DIGEST_SIZE];
+    byte   buffer[WC_MAX_DIGEST_SIZE];
 #endif
 
     hLen = GetDigestSize(hashType);
@@ -177,7 +179,7 @@ int wc_PBKDF2(byte* output, const byte* passwd, int pLen, const byte* salt,
         return BAD_FUNC_ARG;
 
 #ifdef WOLFSSL_SMALL_STACK
-    buffer = (byte*)XMALLOC(MAX_DIGEST_SIZE, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    buffer = (byte*)XMALLOC(WC_MAX_DIGEST_SIZE, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (buffer == NULL)
         return MEMORY_E;
 #endif
@@ -242,11 +244,11 @@ int wc_PBKDF2(byte* output, const byte* passwd, int pLen, const byte* salt,
 }
 
 #ifdef WOLFSSL_SHA512
-    #define PBKDF_DIGEST_SIZE SHA512_BLOCK_SIZE
+    #define PBKDF_DIGEST_SIZE WC_SHA512_BLOCK_SIZE
 #elif !defined(NO_SHA256)
-    #define PBKDF_DIGEST_SIZE SHA256_BLOCK_SIZE
+    #define PBKDF_DIGEST_SIZE WC_SHA256_BLOCK_SIZE
 #else
-    #define PBKDF_DIGEST_SIZE SHA_DIGEST_SIZE
+    #define PBKDF_DIGEST_SIZE WC_SHA_DIGEST_SIZE
 #endif
 
 /* helper for wc_PKCS12_PBKDF(), sets block and digest sizes */
@@ -257,27 +259,27 @@ int GetPKCS12HashSizes(int hashType, word32* v, word32* u)
 
     switch (hashType) {
 #ifndef NO_MD5
-        case MD5:
-            *v = MD5_BLOCK_SIZE;
-            *u = MD5_DIGEST_SIZE;
+        case WC_MD5:
+            *v = WC_MD5_BLOCK_SIZE;
+            *u = WC_MD5_DIGEST_SIZE;
             break;
 #endif
 #ifndef NO_SHA
-        case SHA:
-            *v = SHA_BLOCK_SIZE;
-            *u = SHA_DIGEST_SIZE;
+        case WC_SHA:
+            *v = WC_SHA_BLOCK_SIZE;
+            *u = WC_SHA_DIGEST_SIZE;
             break;
 #endif
 #ifndef NO_SHA256
-        case SHA256:
-            *v = SHA256_BLOCK_SIZE;
-            *u = SHA256_DIGEST_SIZE;
+        case WC_SHA256:
+            *v = WC_SHA256_BLOCK_SIZE;
+            *u = WC_SHA256_DIGEST_SIZE;
             break;
 #endif
 #ifdef WOLFSSL_SHA512
-        case SHA512:
-            *v = SHA512_BLOCK_SIZE;
-            *u = SHA512_DIGEST_SIZE;
+        case WC_SHA512:
+            *v = WC_SHA512_BLOCK_SIZE;
+            *u = WC_SHA512_DIGEST_SIZE;
             break;
 #endif
         default:
@@ -299,41 +301,68 @@ int DoPKCS12Hash(int hashType, byte* buffer, word32 totalLen,
 
     switch (hashType) {
 #ifndef NO_MD5
-        case MD5:
+        case WC_MD5:
             {
-                Md5 md5;
-                wc_InitMd5(&md5);
-                wc_Md5Update(&md5, buffer, totalLen);
-                wc_Md5Final(&md5, Ai);
+                wc_Md5 md5;
+                ret = wc_InitMd5(&md5);
+                if (ret != 0) {
+                    break;
+                }
+                ret = wc_Md5Update(&md5, buffer, totalLen);
+                if (ret != 0) {
+                    break;
+                }
+                ret = wc_Md5Final(&md5, Ai);
+                if (ret != 0) {
+                    break;
+                }
 
                 for (i = 1; i < iterations; i++) {
-                    wc_Md5Update(&md5, Ai, u);
-                    wc_Md5Final(&md5, Ai);
+                    ret = wc_Md5Update(&md5, Ai, u);
+                    if (ret != 0) {
+                        break;
+                    }
+                    ret = wc_Md5Final(&md5, Ai);
+                    if (ret != 0) {
+                        break;
+                    }
                 }
             }
             break;
 #endif /* NO_MD5 */
 #ifndef NO_SHA
-        case SHA:
+        case WC_SHA:
             {
-                Sha sha;
+                wc_Sha sha;
                 ret = wc_InitSha(&sha);
                 if (ret != 0)
                     break;
-                wc_ShaUpdate(&sha, buffer, totalLen);
-                wc_ShaFinal(&sha, Ai);
+                ret = wc_ShaUpdate(&sha, buffer, totalLen);
+                if (ret != 0) {
+                    break;
+                }
+                ret = wc_ShaFinal(&sha, Ai);
+                if (ret != 0) {
+                    break;
+                }
 
                 for (i = 1; i < iterations; i++) {
-                    wc_ShaUpdate(&sha, Ai, u);
-                    wc_ShaFinal(&sha, Ai);
+                    ret = wc_ShaUpdate(&sha, Ai, u);
+                    if (ret != 0) {
+                        break;
+                    }
+                    ret = wc_ShaFinal(&sha, Ai);
+                    if (ret != 0) {
+                        break;
+                    }
                 }
             }
             break;
 #endif /* NO_SHA */
 #ifndef NO_SHA256
-        case SHA256:
+        case WC_SHA256:
             {
-                Sha256 sha256;
+                wc_Sha256 sha256;
                 ret = wc_InitSha256(&sha256);
                 if (ret != 0)
                     break;
@@ -359,9 +388,9 @@ int DoPKCS12Hash(int hashType, byte* buffer, word32 totalLen,
             break;
 #endif /* NO_SHA256 */
 #ifdef WOLFSSL_SHA512
-        case SHA512:
+        case WC_SHA512:
             {
-                Sha512 sha512;
+                wc_Sha512 sha512;
                 ret = wc_InitSha512(&sha512);
                 if (ret != 0)
                     break;
@@ -775,7 +804,7 @@ int wc_scrypt(byte* output, const byte* passwd, int passLen,
 
     /* Step 1. */
     ret = wc_PBKDF2(blocks, passwd, passLen, salt, saltLen, 1, blocksSz,
-                    SHA256);
+                    WC_SHA256);
     if (ret != 0)
         goto end;
 
@@ -785,7 +814,7 @@ int wc_scrypt(byte* output, const byte* passwd, int passLen,
 
     /* Step 3. */
     ret = wc_PBKDF2(output, passwd, passLen, blocks, blocksSz, 1, dkLen,
-                    SHA256);
+                    WC_SHA256);
 end:
     if (blocks != NULL)
         XFREE(blocks, NULL, DYNAMIC_TYPE_TMP_BUFFER);

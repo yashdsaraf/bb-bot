@@ -1,6 +1,6 @@
 /* wolfmath.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -49,6 +49,29 @@
 #else
     #define WOLFSSL_MISC_INCLUDED
     #include <wolfcrypt/src/misc.c>
+#endif
+
+
+#if !defined(WC_NO_CACHE_RESISTANT) && \
+    ((defined(HAVE_ECC) && defined(ECC_TIMING_RESISTANT)) || \
+     (defined(USE_FAST_MATH) && defined(TFM_TIMING_RESISTANT)))
+
+    /* all off / all on pointer addresses for constant calculations */
+    /* ecc.c uses same table */
+    const wolfssl_word wc_off_on_addr[2] =
+    {
+    #if defined(WC_64BIT_CPU)
+        W64LIT(0x0000000000000000),
+        W64LIT(0xffffffffffffffff)
+    #elif defined(WC_16BIT_CPU)
+        0x0000U,
+        0xffffU
+    #else
+        /* 32 bit */
+        0x00000000U,
+        0xffffffffU
+    #endif
+    };
 #endif
 
 

@@ -66,7 +66,7 @@ def download(arch):
     print(colored('Unzipping ' + file + ' --', 'blue'))
     with ZipFile(file) as zipfile:
         names = filter(lambda x: 'META-INF' not in x and '.sh' not in x, zipfile.namelist())
-        zipfile.extractall('../bbx/Bins/' + arch.lower(), names)
+        zipfile.extractall('../installers/Bins/' + arch.lower(), names)
 
     print(colored('Done with ' + file + '!', 'green'))
     remove(file)

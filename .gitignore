@@ -1,9 +1,9 @@
 scripts/misc
 busybox/
 out/**
-bbx/out/**
+installers/out/**
 scripts/misc
-bbx/workspace/**
-bbx/Bins/*/**
-!bbx/Bins/*/xzdec
+installers/workspace/**
+installers/Bins/*/**
+!installers/Bins/*/xzdec
 files.tar

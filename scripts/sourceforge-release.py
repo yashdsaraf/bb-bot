@@ -28,7 +28,7 @@ _private_key = 'sf_private_key'
 _private_key_password = environ['SF_PRIVATE_KEY_PASS']
 release_path = '/home/frs/project/busybox-yds'
 dir_name = date.today().strftime('%b-%d-%y')
-local_release_path = abspath('../bbx/out')
+local_release_path = abspath('../installers/out')
 cnopts = pysftp.CnOpts()
 cnopts.hostkeys = None
 

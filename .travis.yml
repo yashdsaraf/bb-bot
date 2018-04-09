@@ -15,10 +15,11 @@ install: scripts/install-dependencies.sh
 script: scripts/readytorock.sh
 env:
   global:
-    - VER="1.28.1-YDS"
+    - VER="1.28.3-YDS"
     - STATUS="stable"
     - BUILD_TAG="v${VER}-$(TZ=UTC date +'%Y%m%d%H%M')"
     - TEMP_DIR=$(mktemp -d)
+    - PRERELEASE=$(test "$TRAVIS_BRANCH" = "master" && echo false || echo true)
   matrix:
     - TO_BUILD="boxemup"
     - TO_BUILD="arm arm64"
@@ -28,10 +29,11 @@ env:
 before_deploy: git fetch origin
 deploy:
   provider: releases
+  prerelease: $PRERELEASE
   api_key:
     secure: $TOKEN
   file_glob: true
-  file: bbx/out/*
+  file: installers/out/*
   skip_cleanup: true
   on:
     all_branches: true

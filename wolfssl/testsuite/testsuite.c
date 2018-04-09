@@ -1,6 +1,6 @@
 /* testsuite.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -28,24 +28,27 @@
 
 #include <wolfssl/ssl.h>
 #include <wolfssl/test.h>
-#include "wolfcrypt/test/test.h"
+#include <wolfcrypt/test/test.h>
 
 
 #ifndef SINGLE_THREADED
 
+#ifdef OPENSSL_EXTRA
 #include <wolfssl/openssl/ssl.h>
+#endif
 #include <wolfssl/wolfcrypt/sha256.h>
 
-#include "examples/echoclient/echoclient.h"
-#include "examples/echoserver/echoserver.h"
-#include "examples/server/server.h"
-#include "examples/client/client.h"
+#include <examples/echoclient/echoclient.h>
+#include <examples/echoserver/echoserver.h>
+#include <examples/server/server.h>
+#include <examples/client/client.h>
 
 
 #ifndef NO_SHA256
 void file_test(const char* file, byte* hash);
 #endif
 
+#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT)
 void simple_test(func_args*);
 
 enum {
@@ -53,6 +56,7 @@ enum {
 };
 
 static const char *outputName;
+#endif
 
 int myoptind = 0;
 char* myoptarg = NULL;
@@ -71,6 +75,7 @@ char* myoptarg = NULL;
 
 int testsuite_test(int argc, char** argv)
 {
+#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT)
     func_args server_args;
 
     tcp_ready ready;
@@ -87,10 +92,10 @@ int testsuite_test(int argc, char** argv)
 #endif
 
 #ifdef HAVE_WNR
-        if (wc_InitNetRandom(wnrConfig, NULL, 5000) != 0) {
-            err_sys("Whitewood netRandom global config failed");
-            return -1237;
-        }
+    if (wc_InitNetRandom(wnrConfig, NULL, 5000) != 0) {
+        err_sys("Whitewood netRandom global config failed");
+        return -1237;
+    }
 #endif /* HAVE_WNR */
 
     StartTCP();
@@ -184,8 +189,8 @@ int testsuite_test(int argc, char** argv)
     /* validate output equals input */
     {
     #ifndef NO_SHA256
-        byte input[SHA256_DIGEST_SIZE];
-        byte output[SHA256_DIGEST_SIZE];
+        byte input[WC_SHA256_DIGEST_SIZE];
+        byte output[WC_SHA256_DIGEST_SIZE];
 
         file_test("input",  input);
         file_test(outputName, output);
@@ -210,9 +215,16 @@ int testsuite_test(int argc, char** argv)
 #endif /* HAVE_WNR */
 
     printf("\nAll tests passed!\n");
+
+#else
+    (void)argc;
+    (void)argv;
+#endif /* !NO_WOLFSSL_SERVER && !NO_WOLFSSL_CLIENT */
+
     return EXIT_SUCCESS;
 }
 
+#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT)
 void simple_test(func_args* args)
 {
     THREAD_TYPE serverThread;
@@ -284,6 +296,7 @@ void simple_test(func_args* args)
     join_thread(serverThread);
     if (svrArgs.return_code != 0) args->return_code = svrArgs.return_code;
 }
+#endif /* !NO_WOLFSSL_SERVER && !NO_WOLFSSL_CLIENT */
 
 
 void wait_tcp_ready(func_args* args)
@@ -351,9 +364,9 @@ void file_test(const char* file, byte* check)
 {
     FILE* f;
     int   i = 0, j, ret;
-    Sha256   sha256;
+    wc_Sha256   sha256;
     byte  buf[1024];
-    byte  shasum[SHA256_DIGEST_SIZE];
+    byte  shasum[WC_SHA256_DIGEST_SIZE];
 
     ret = wc_InitSha256(&sha256);
     if (ret != 0) {
@@ -382,7 +395,7 @@ void file_test(const char* file, byte* check)
 
     XMEMCPY(check, shasum, sizeof(shasum));
 
-    for(j = 0; j < SHA256_DIGEST_SIZE; ++j )
+    for(j = 0; j < WC_SHA256_DIGEST_SIZE; ++j )
         printf( "%02x", shasum[j] );
 
     printf("  %s\n", file);

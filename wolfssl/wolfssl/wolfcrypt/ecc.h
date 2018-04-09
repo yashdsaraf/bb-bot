@@ -1,6 +1,6 @@
 /* ecc.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -26,6 +26,10 @@
 #include <wolfssl/wolfcrypt/types.h>
 
 #ifdef HAVE_ECC
+
+#if defined(HAVE_FIPS_VERSION) && (HAVE_FIPS_VERSION >= 2)
+    #include <wolfssl/wolfcrypt/fips.h>
+#endif /* HAVE_FIPS_VERSION >= 2 */
 
 #include <wolfssl/wolfcrypt/integer.h>
 #include <wolfssl/wolfcrypt/random.h>
@@ -98,8 +102,9 @@
 
 
 enum {
-    ECC_PUBLICKEY   = 1,
-    ECC_PRIVATEKEY  = 2,
+    ECC_PUBLICKEY       = 1,
+    ECC_PRIVATEKEY      = 2,
+    ECC_PRIVATEKEY_ONLY = 3,
     ECC_MAXNAME     = 16,   /* MAX CURVE NAME LENGTH */
     SIG_HEADER_SZ   =  6,   /* ECC signature header size */
     ECC_BUFSIZE     = 256,  /* for exported keys temp buffer */
@@ -108,7 +113,14 @@ enum {
     ECC_MAXSIZE_GEN = 74,   /* MAX Buffer size required when generating ECC keys*/
     ECC_MAX_PAD_SZ  = 4,    /* ECC maximum padding size */
     ECC_MAX_OID_LEN = 16,
-    ECC_MAX_SIG_SIZE= ((MAX_ECC_BYTES * 2) + ECC_MAX_PAD_SZ + SIG_HEADER_SZ)
+    ECC_MAX_SIG_SIZE= ((MAX_ECC_BYTES * 2) + ECC_MAX_PAD_SZ + SIG_HEADER_SZ),
+
+    /* max crypto hardware size */
+#ifdef WOLFSSL_ATECC508A
+    ECC_MAX_CRYPTO_HW_SIZE = ATECC_KEY_SIZE, /* from port/atmel/atmel.h */
+#elif defined(PLUTON_CRYPTO_ECC)
+    ECC_MAX_CRYPTO_HW_SIZE = 32,
+#endif
 };
 
 /* Curve Types */
@@ -150,6 +162,18 @@ typedef enum ecc_curve_id {
     ECC_BRAINPOOLP320R1,
     ECC_BRAINPOOLP384R1,
     ECC_BRAINPOOLP512R1,
+
+    /* Twisted Edwards Curves */
+#ifdef HAVE_CURVE25519
+    ECC_X25519,
+#endif
+#ifdef HAVE_X448
+    ECC_X448,
+#endif
+
+#ifdef WOLFSSL_CUSTOM_CURVES
+    ECC_CURVE_CUSTOM,
+#endif
 } ecc_curve_id;
 
 #ifdef HAVE_OID_ENCODING
@@ -271,13 +295,18 @@ struct ecc_key {
     word32 flags;
     const ecc_set_type* dp;     /* domain parameters, either points to NIST
                                    curves (idx >= 0) or user supplied */
+#ifdef WOLFSSL_CUSTOM_CURVES
+    int deallocSet;
+#endif
     void* heap;         /* heap hint */
-#ifdef WOLFSSL_ATECC508A
-    int  slot;        /* Key Slot Number (-1 unknown) */
-    byte pubkey[PUB_KEY_SIZE];
-#else
     ecc_point pubkey;   /* public key */
     mp_int    k;        /* private key */
+#ifdef WOLFSSL_ATECC508A
+    int  slot;        /* Key Slot Number (-1 unknown) */
+    byte pubkey_raw[PUB_KEY_SIZE];
+#endif
+#ifdef PLUTON_CRYPTO_ECC
+    int devId;
 #endif
 #ifdef WOLFSSL_ASYNC_CRYPT
     mp_int* r;          /* sign/verify temps */
@@ -309,6 +338,10 @@ const char* wc_ecc_get_name(int curve_id);
     #define ECC_API    WOLFSSL_LOCAL
 #endif
 
+ECC_API int ecc_mul2add(ecc_point* A, mp_int* kA,
+                ecc_point* B, mp_int* kB,
+                ecc_point* C, mp_int* a, mp_int* modulus, void* heap);
+
 ECC_API int ecc_map(ecc_point*, mp_int*, mp_digit);
 ECC_API int ecc_projective_add_point(ecc_point* P, ecc_point* Q, ecc_point* R,
                                      mp_int* a, mp_int* modulus, mp_digit mp);
@@ -322,6 +355,8 @@ int wc_ecc_make_key(WC_RNG* rng, int keysize, ecc_key* key);
 WOLFSSL_API
 int wc_ecc_make_key_ex(WC_RNG* rng, int keysize, ecc_key* key,
     int curve_id);
+WOLFSSL_API
+int wc_ecc_make_pub(ecc_key* key, ecc_point* pubOut);
 WOLFSSL_API
 int wc_ecc_check_key(ecc_key* key);
 WOLFSSL_API
@@ -362,8 +397,12 @@ WOLFSSL_API
 int wc_ecc_init(ecc_key* key);
 WOLFSSL_API
 int wc_ecc_init_ex(ecc_key* key, void* heap, int devId);
+#ifdef WOLFSSL_CUSTOM_CURVES
+WOLFSSL_LOCAL
+void wc_ecc_free_curve(const ecc_set_type* curve, void* heap);
+#endif
 WOLFSSL_API
-void wc_ecc_free(ecc_key* key);
+int wc_ecc_free(ecc_key* key);
 WOLFSSL_API
 int wc_ecc_set_flags(ecc_key* key, word32 flags);
 WOLFSSL_API
@@ -394,7 +433,6 @@ int wc_ecc_get_curve_id_from_params(int fieldSize,
         const byte* Bf, word32 BfSz, const byte* order, word32 orderSz,
         const byte* Gx, word32 GxSz, const byte* Gy, word32 GySz, int cofactor);
 
-#ifndef WOLFSSL_ATECC508A
 
 WOLFSSL_API
 ecc_point* wc_ecc_new_point(void);
@@ -410,6 +448,8 @@ WOLFSSL_API
 int wc_ecc_cmp_point(ecc_point* a, ecc_point *b);
 WOLFSSL_API
 int wc_ecc_point_is_at_infinity(ecc_point *p);
+
+#ifndef WOLFSSL_ATECC508A
 WOLFSSL_API
 int wc_ecc_mulmod(mp_int* k, ecc_point *G, ecc_point *R,
                   mp_int* a, mp_int* modulus, int map);

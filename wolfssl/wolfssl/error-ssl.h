@@ -1,6 +1,6 @@
 /* error-ssl.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2017 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
@@ -57,7 +57,7 @@ enum wolfSSL_ErrorCodes {
     DOMAIN_NAME_MISMATCH         = -322,   /* peer subject name mismatch */
     WANT_READ                    = -323,   /* want read, call again    */
     NOT_READY_ERROR              = -324,   /* handshake layer not ready */
-    PMS_VERSION_ERROR            = -325,   /* pre m secret version error */
+
     VERSION_ERROR                = -326,   /* record layer version error */
     WANT_WRITE                   = -327,   /* want write, call again   */
     BUFFER_ERROR                 = -328,   /* malformed buffer input   */
@@ -142,7 +142,7 @@ enum wolfSSL_ErrorCodes {
     UNKNOWN_ALPN_PROTOCOL_NAME_E = -405,   /* Unrecognized protocol name Error*/
     BAD_CERTIFICATE_STATUS_ERROR = -406,   /* Bad certificate status message */
     OCSP_INVALID_STATUS          = -407,   /* Invalid OCSP Status */
-
+    OCSP_WANT_READ               = -408,   /* OCSP callback response WOLFSSL_CBIO_ERR_WANT_READ */
     RSA_KEY_SIZE_E               = -409,   /* RSA key too small */
     ECC_KEY_SIZE_E               = -410,   /* ECC key too small */
 
@@ -155,12 +155,25 @@ enum wolfSSL_ErrorCodes {
     HTTP_TIMEOUT                 = -417,   /* HTTP timeout for OCSP or CRL req */
     WRITE_DUP_READ_E             = -418,   /* Write dup write side can't read */
     WRITE_DUP_WRITE_E            = -419,   /* Write dup read side can't write */
+    INVALID_CERT_CTX_E           = -420,   /* TLS cert ctx not matching */
+    BAD_KEY_SHARE_DATA           = -421,   /* Key Share data invalid */
+    MISSING_HANDSHAKE_DATA       = -422,   /* Handshake message missing data */
+    BAD_BINDER                   = -423,   /* Binder does not match */
+    EXT_NOT_ALLOWED              = -424,   /* Extension not allowed in msg */
+    INVALID_PARAMETER            = -425,   /* Security parameter invalid */
+    MCAST_HIGHWATER_CB_E         = -426,   /* Multicast highwater cb err */
+    ALERT_COUNT_E                = -427,   /* Alert Count exceeded err */
+    EXT_MISSING                  = -428,   /* Required extension not found */
+    UNSUPPORTED_EXTENSION        = -429,   /* TLSX not requested by client */
     /* add strings to wolfSSL_ERR_reason_error_string in internal.c !!!!! */
 
     /* begin negotiation parameter errors */
-    UNSUPPORTED_SUITE            = -500,        /* unsupported cipher suite */
-    MATCH_SUITE_ERROR            = -501,        /* can't match cipher suite */
-    COMPRESSION_ERROR            = -502         /* compression mismatch */
+    UNSUPPORTED_SUITE            = -500,   /* unsupported cipher suite */
+    MATCH_SUITE_ERROR            = -501,   /* can't match cipher suite */
+    COMPRESSION_ERROR            = -502,   /* compression mismatch */
+    KEY_SHARE_ERROR              = -503,   /* key share mismatch */
+    POST_HAND_AUTH_ERROR         = -504,   /* client won't do post-hand auth */
+    HRR_COOKIE_ERROR             = -505    /* HRR msg cookie mismatch */
     /* end negotiation parameter errors only 10 for now */
     /* add strings to wolfSSL_ERR_reason_error_string in internal.c !!!!! */
 
@@ -168,7 +181,7 @@ enum wolfSSL_ErrorCodes {
 };
 
 
-#ifdef WOLFSSL_CALLBACKS
+#if defined(WOLFSSL_CALLBACKS) || defined(OPENSSL_EXTRA)
     enum {
         MIN_PARAM_ERR = UNSUPPORTED_SUITE,
         MAX_PARAM_ERR = MIN_PARAM_ERR - 10
