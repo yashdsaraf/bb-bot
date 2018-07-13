@@ -367,7 +367,7 @@ if $MAGISK
     fi
 fi
 
-POSSIBLE_INSTALLDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin"
+POSSIBLE_INSTALLDIRS="/su/xbin /data/adb/su/xbin /system/xbin /su/bin /data/adb/su/bin /system/bin /system/vendor/bin /vendor/bin"
 if [ $INSTALLDIR == "none" ]
     then
     for dir in $POSSIBLE_INSTALLDIRS
