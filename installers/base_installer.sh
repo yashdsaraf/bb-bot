@@ -29,11 +29,12 @@ MAGISKINSTALL=false
 MAGISKBIN=/data/adb/magisk
 MAGISK_UTIL_FUNCTIONS=$MAGISKBIN/util_functions.sh
 
-if [ -f $MAGISK_UTIL_FUNCTIONS ]
-    then
-    . $MAGISK_UTIL_FUNCTIONS
-    MAGISK=true
-fi
+# Disabling magisk installation for the time being
+# if [ -f $MAGISK_UTIL_FUNCTIONS ]
+#     then
+#     . $MAGISK_UTIL_FUNCTIONS
+#     MAGISK=true
+# fi
 
 OPFD=$2
 BBZIP=$3

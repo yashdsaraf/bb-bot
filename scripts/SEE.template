@@ -368,23 +368,23 @@ BBX=$BBTEMP/$BBX
 POSSIBLE_INSTALLDIRS="/su/xbin /data/adb/su/xbin /system/xbin /system/vendor/bin /vendor/bin"
 if [ $INSTALLDIR == "none" ]
     then
-    if [ -f /data/magisk.img -o -f /data/adb/magisk.img ]
-        then
-        echo "  "
-        echo "** Your device seems to have magisk installed!"
-        echo "If you would like to install busybox as a magisk module,"
-        echo " then please use the flashable zips instead **"
-        echo "For more info visit: http://bit.ly/bbxyds"
-        echo " "
-        echo "Would you like to continue (Y/n) --"
-        read enter
-        case "$enter" in
-            n|no) $sysro
-                exit 0
-                ;;
-        esac
-        echo "  "
-    fi
+    # if [ -f /data/magisk.img -o -f /data/adb/magisk.img ]
+    #     then
+    #     echo "  "
+    #     echo "** Your device seems to have magisk installed!"
+    #     echo "If you would like to install busybox as a magisk module,"
+    #     echo " then please use the flashable zips instead **"
+    #     echo "For more info visit: http://bit.ly/bbxyds"
+    #     echo " "
+    #     echo "Would you like to continue (Y/n) --"
+    #     read enter
+    #     case "$enter" in
+    #         n|no) $sysro
+    #             exit 0
+    #             ;;
+    #     esac
+    #     echo "  "
+    # fi
     for dir in $POSSIBLE_INSTALLDIRS
     do
         if [ -d $dir -a -w $dir ]
